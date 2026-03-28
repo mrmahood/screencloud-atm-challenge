@@ -1,16 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import PinEntry from "@/components/PinEntry";
+import AtmDashboard from "@/components/AtmDashboard";
+import { useAtm } from "@/hooks/useAtm";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+export default function Index() {
+  const { balance, notes, transactions, error, setError, withdraw, login, reset } = useAtm();
+
+  if (balance === null) {
+    return <PinEntry onSuccess={login} />;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <AtmDashboard
+      balance={balance}
+      notes={notes}
+      transactions={transactions}
+      error={error}
+      onWithdraw={withdraw}
+      onSetError={setError}
+      onReset={reset}
+    />
   );
-};
-
-const Index = PlaceholderIndex;
-
-export default Index;
+}

@@ -3,7 +3,7 @@ import AtmDashboard from "@/components/AtmDashboard";
 import { useAtm } from "@/hooks/useAtm";
 
 export default function Index() {
-  const { balance, notes, transactions, error, setError, withdraw, login, reset } = useAtm();
+  const { balance, notes, transactions, error, setError, withdraw, canWithdraw, login, reset } = useAtm();
 
   if (balance === null) {
     return <PinEntry onSuccess={login} />;
@@ -16,6 +16,7 @@ export default function Index() {
       transactions={transactions}
       error={error}
       onWithdraw={withdraw}
+      onCanWithdraw={canWithdraw}
       onSetError={setError}
       onReset={reset}
     />

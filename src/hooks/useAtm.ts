@@ -32,24 +32,6 @@ export function useAtm() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const canWithdraw = useCallback(
-    (amount: number): { possible: boolean; reason?: string } => {
-      if (balance === null) return { possible: false, reason: "Not authenticated" };
-      if (balance - amount < OVERDRAFT_LIMIT) {
-        return { possible: false, reason: "Exceeds overdraft limit" };
-      }
-      if (amount > getTotalCash(notes)) {
-        return { possible: false, reason: "ATM has insufficient cash" };
-      }
-      const dispensed = dispenseNotes(amount, notes);
-      if (!dispensed) {
-        return { possible: false, reason: "Cannot dispense exact amount" };
-      }
-      return { possible: true };
-    },
-    [balance, notes]
-  );
-
   const withdraw = useCallback(
     (amount: number): WithdrawalResult => {
       if (balance === null) {

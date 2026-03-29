@@ -7,6 +7,7 @@ import {
   processWithdrawal,
   processWithdrawalSequence,
   selectBestNoteCombination,
+  getSuggestedWithdrawalAmounts,
 } from "@/lib/atm";
 
 const OVERDRAFT_LIMIT = -100;
@@ -214,5 +215,141 @@ describe("ATM account-level behavior with overdraft boundary", () => {
 
     expect(balance).toBe(110);
     expect(inventory).toEqual({ 5: 4, 10: 11, 20: 0 });
+  });
+});
+
+
+describe("ATM suggested withdrawal amounts", () => {
+
+  it("is deterministic for the same inventory input", () => {
+    const inventory: NoteInventory = { 5: 4, 10: 3, 20: 2 };
+
+    const first = getSuggestedWithdrawalAmounts(inventory);
+    const second = getSuggestedWithdrawalAmounts(inventory);
+
+    expect(first).toEqual(second);
+  });
+
+  it("returns 4-6 preferred round suggestions from current inventory", () => {
+    const suggestions = getSuggestedWithdrawalAmounts(INITIAL_NOTE_INVENTORY);
+
+    expect(suggestions.length).toBeGreaterThanOrEqual(4);
+    expect(suggestions.length).toBeLessThanOrEqual(6);
+    expect(suggestions).toEqual([20, 40, 60, 80, 100, 10]);
+  });
+
+  it("returns only dispensable amounts that are multiples of 5 and capped at 100", () => {
+    const suggestions = getSuggestedWithdrawalAmounts({ 5: 1, 10: 0, 20: 0 });
+
+    expect(suggestions).toEqual([5]);
+    suggestions.forEach((amount) => {
+      expect(amount % 5).toBe(0);
+      expect(amount).toBeLessThanOrEqual(100);
+      expect(processWithdrawal(amount, { 5: 1, 10: 0, 20: 0 }).success).toBe(true);
+    });
+  });
+
+  it("falls back to any valid multiples of 5 when fewer than 4 preferred amounts are available", () => {
+    const suggestions = getSuggestedWithdrawalAmounts({ 5: 2, 10: 0, 20: 1 });
+
+    expect(suggestions).toEqual([20, 10, 30, 5, 15, 25]);
+  });
+});
+
+function getPermutations(values: number[]): number[][] {
+  if (values.length <= 1) {
+    return [values];
+  }
+
+  const permutations: number[][] = [];
+  values.forEach((value, index) => {
+    const remaining = [...values.slice(0, index), ...values.slice(index + 1)];
+    const remainingPermutations = getPermutations(remaining);
+
+    remainingPermutations.forEach((permutation) => {
+      permutations.push([value, ...permutation]);
+    });
+  });
+
+  return permutations;
+}
+
+function assertSuggestionRules(suggestions: number[], inventory: NoteInventory): void {
+  suggestions.forEach((amount) => {
+    expect(amount % 5).toBe(0);
+    expect(amount).toBeLessThanOrEqual(100);
+    expect(processWithdrawal(amount, inventory).success).toBe(true);
+  });
+}
+
+describe("Michael withdrawal permutations (140, 50, 90)", () => {
+  const requiredWithdrawals = [140, 50, 90] as const;
+  const permutations = getPermutations([...requiredWithdrawals]);
+
+  it("generates all 6 unique permutations", () => {
+    const unique = new Set(permutations.map((permutation) => permutation.join("-")));
+
+    expect(permutations).toHaveLength(6);
+    expect(unique.size).toBe(6);
+  });
+
+  it.each(permutations)(
+    "processes permutation %j with inventory/balance updates, overdraft checks, result shape consistency, and dynamic suggestions",
+    (permutation) => {
+      let balance = 170;
+      let inventory: NoteInventory = { ...INITIAL_NOTE_INVENTORY };
+      let remainingOverdraftFailures = 0;
+
+      permutation.forEach((amount) => {
+        const suggestionsBefore = getSuggestedWithdrawalAmounts(inventory);
+        assertSuggestionRules(suggestionsBefore, inventory);
+
+        const { balanceAfter, result } = attemptAccountWithdrawal({
+          balance,
+          amount,
+          inventory,
+        });
+
+        if (result.success) {
+          expect(result.notesDispensed).not.toEqual({ 5: 0, 10: 0, 20: 0 });
+          expect(result.updatedInventory).not.toEqual(inventory);
+          expect(balanceAfter).toBe(balance - amount);
+
+          inventory = result.updatedInventory;
+          balance = balanceAfter;
+        } else {
+          remainingOverdraftFailures += 1;
+          expect(result.notesDispensed).toEqual({ 5: 0, 10: 0, 20: 0 });
+          expect(result.updatedInventory).toEqual(inventory);
+          expect(result.message).toBe("Withdrawal would exceed overdraft limit of £100.");
+          expect(balanceAfter).toBe(balance);
+        }
+
+        const suggestionsAfter = getSuggestedWithdrawalAmounts(inventory);
+        assertSuggestionRules(suggestionsAfter, inventory);
+      });
+
+      // With starting balance 170 and total withdrawal demand 280,
+      // exactly one withdrawal must fail due to overdraft in any permutation.
+      expect(remainingOverdraftFailures).toBe(1);
+      expect(balance).toBe(-100);
+    },
+  );
+
+  it("keeps suggested amounts unchanged when overdraft failure occurs and inventory does not change", () => {
+    const inventory = { ...INITIAL_NOTE_INVENTORY };
+    const suggestionsBefore = getSuggestedWithdrawalAmounts(inventory);
+
+    const { result } = attemptAccountWithdrawal({
+      balance: -90,
+      amount: 20,
+      inventory,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.updatedInventory).toEqual(inventory);
+
+    const suggestionsAfter = getSuggestedWithdrawalAmounts(inventory);
+    expect(suggestionsAfter).toEqual(suggestionsBefore);
   });
 });

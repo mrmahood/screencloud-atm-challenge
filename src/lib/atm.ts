@@ -151,6 +151,54 @@ export function processWithdrawal(amount: number, inventory: NoteInventory): Wit
   };
 }
 
+
+const PREFERRED_SUGGESTED_AMOUNTS = [
+  20, 40, 60, 80, 100,
+  10, 30, 50, 70, 90,
+  5, 15, 25, 35, 45, 55, 65, 75, 85, 95,
+] as const;
+
+export function getSuggestedWithdrawalAmounts(inventory: NoteInventory): number[] {
+  const suggestions: number[] = [];
+
+  for (const amount of PREFERRED_SUGGESTED_AMOUNTS) {
+    if (amount > 100 || amount % 5 !== 0) {
+      continue;
+    }
+
+    const isDispensable = processWithdrawal(amount, inventory).success;
+    if (isDispensable) {
+      suggestions.push(amount);
+    }
+
+    if (suggestions.length === 6) {
+      return suggestions;
+    }
+  }
+
+  if (suggestions.length >= 4) {
+    return suggestions;
+  }
+
+  for (let amount = 5; amount <= 100; amount += 5) {
+    if (suggestions.includes(amount)) {
+      continue;
+    }
+
+    const isDispensable = processWithdrawal(amount, inventory).success;
+    if (!isDispensable) {
+      continue;
+    }
+
+    suggestions.push(amount);
+    if (suggestions.length === 6) {
+      break;
+    }
+  }
+
+  return suggestions;
+}
+
 export function processWithdrawalSequence(
   amounts: number[],
   startingInventory: NoteInventory = INITIAL_NOTE_INVENTORY,

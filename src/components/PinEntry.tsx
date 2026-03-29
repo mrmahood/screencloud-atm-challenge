@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Loader2, Lock } from "lucide-react";
 
 interface PinEntryProps {
   onSuccess: (balance: number) => void;
@@ -47,7 +47,12 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
       const data = await res.json();
       onSuccess(data.currentBalance);
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      const message =
+        err instanceof TypeError
+          ? "Unable to connect. Please try again."
+          : err.message || "Something went wrong";
+      setError(message);
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -83,11 +88,33 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                 const pastedValue = e.clipboardData.getData("text");
                 updatePin(pastedValue, e.currentTarget);
               }}
-              className="text-center text-2xl tracking-[0.5em] h-14"
+              onBeforeInput={(e) => {
+                const nativeEvent = e.nativeEvent as InputEvent;
+                const isInsertAction = nativeEvent.inputType?.startsWith("insert");
+                const nextChar = nativeEvent.data ?? "";
+
+                if (!isInsertAction) {
+                  return;
+                }
+
+                if (/\D/.test(nextChar) || pin.length >= 4) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pastedValue = e.clipboardData.getData("text");
+                setPin(sanitizePin(pastedValue));
+                setError(null);
+              }}
+              className={`text-center text-2xl tracking-[0.5em] h-14 ${shake ? "animate-shake" : ""}`}
               autoFocus
             />
             {error && (
-              <p className="text-sm text-destructive text-center font-medium">{error}</p>
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
             )}
             <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length !== 4}>
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enter"}

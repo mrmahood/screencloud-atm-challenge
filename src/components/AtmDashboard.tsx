@@ -12,9 +12,11 @@ import {
   AlertTriangle,
   Banknote,
   CheckCircle2,
+  Clock,
   History,
   Loader2,
   LogOut,
+  Receipt,
   Wallet,
 } from "lucide-react";
 
@@ -58,10 +60,6 @@ export default function AtmDashboard({
     [notes, balance],
   );
 
-  const clearStageTimer = () => {
-    if (stageTimer.current) clearTimeout(stageTimer.current);
-  };
-
   const runWithdraw = useCallback(
     (amount: number) => {
       if (isBusy) return;
@@ -96,33 +94,38 @@ export default function AtmDashboard({
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
+      onSetError("Please enter a valid amount in multiples of £5.");
       return;
     }
     runWithdraw(amount);
   };
 
-  /* Stage banner content */
+  const handleChipClick = (amount: number) => {
+    setWithdrawalAmount(String(amount));
+    onSetError(null);
+  };
+
+  /* Stage banner */
   const stageBanner = (() => {
     switch (stage) {
       case "processing":
         return (
-          <div className="flex items-center gap-2.5 rounded-lg bg-primary/5 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+          <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/10 px-5 py-3.5 text-sm font-medium text-primary animate-fade-in">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
             Processing transaction…
           </div>
         );
       case "dispensing":
         return (
-          <div className="flex items-center gap-2.5 rounded-lg bg-primary/5 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+          <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/10 px-5 py-3.5 text-sm font-medium text-primary animate-fade-in">
             <Banknote className="h-4 w-4 shrink-0" />
             Dispensing cash…
           </div>
         );
       case "collect":
         return (
-          <div className="flex items-center gap-2.5 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm font-medium text-green-700 dark:text-green-400 animate-slide-down">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground animate-fade-in">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
             Please take your cash — £{lastSuccess} dispensed.
           </div>
         );
@@ -155,7 +158,7 @@ export default function AtmDashboard({
             End Session
           </Button>
         ) : (
-          <div className="flex items-center gap-1.5 animate-fade-in-up">
+          <div className="flex items-center gap-1.5 animate-fade-in">
             <span className="text-xs text-muted-foreground mr-1">
               End session?
             </span>
@@ -181,10 +184,10 @@ export default function AtmDashboard({
 
       {/* Balance — Hero */}
       <Card
-        className={`card-hero transition-all duration-300 ${
+        className={`transition-all duration-300 border ${
           isOverdrawn
-            ? "border-warning/50 shadow-[0_2px_12px_-4px_hsl(var(--warning)/0.15)]"
-            : "shadow-[0_2px_16px_-6px_hsl(var(--primary)/0.1)]"
+            ? "border-warning/40 shadow-[0_2px_12px_-4px_hsl(var(--warning)/0.12)]"
+            : "border-border/60 shadow-[0_2px_16px_-6px_hsl(var(--primary)/0.08)]"
         }`}
       >
         <CardContent className="pt-6 pb-5 px-6">
@@ -199,7 +202,7 @@ export default function AtmDashboard({
             £{balance.toFixed(2)}
           </p>
           {isOverdrawn && (
-            <p className="mt-3 flex items-center gap-1.5 text-sm text-warning animate-fade-in-up">
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-warning animate-fade-in">
               <AlertTriangle className="h-3.5 w-3.5" />
               You are £{Math.abs(balance).toFixed(2)} overdrawn.
             </p>
@@ -212,64 +215,85 @@ export default function AtmDashboard({
 
       {/* Error banner */}
       {error && stage === "idle" && (
-        <div className="flex items-center gap-2.5 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm font-medium text-destructive animate-slide-down">
+        <div className="flex items-center gap-3 rounded-xl bg-destructive/8 border border-destructive/15 px-5 py-3.5 text-sm font-medium text-destructive animate-fade-in">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
       {/* Withdraw */}
-      <Card className={`card-elevated transition-opacity duration-200 ${isBusy ? "opacity-60 pointer-events-none" : ""}`}>
+      <Card
+        className={`border border-border/60 transition-all duration-200 ${
+          isBusy ? "opacity-50 pointer-events-none" : ""
+        }`}
+      >
         <CardHeader className="pb-3 px-5 pt-5">
           <CardTitle className="text-sm font-semibold text-foreground">
             Withdraw Cash
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-5 pb-5">
-          <div className="flex flex-col gap-2.5 sm:flex-row">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmitWithdraw();
+            }}
+            className="flex flex-col gap-2.5 sm:flex-row"
+          >
             <div className="relative flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground/70">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground/60">
                 £
               </span>
               <Input
                 type="number"
-                placeholder="Amount"
+                placeholder="Enter amount"
                 value={withdrawalAmount}
                 onChange={(e) => {
                   setWithdrawalAmount(e.target.value);
                   onSetError(null);
                 }}
-                className="pl-7 tabular-nums"
+                className="pl-7 tabular-nums h-11 text-base transition-shadow duration-150 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
                 min={5}
                 step={5}
               />
             </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSubmitWithdraw();
-              }}
+            <Button
+              type="submit"
+              className="sm:w-40 w-full h-11 text-sm font-semibold tracking-wide transition-all duration-150 active:scale-[0.98]"
+              disabled={!canSubmitWithdrawal || isBusy}
             >
-              <Button type="submit" className="sm:w-40 w-full" disabled={!canSubmitWithdrawal || isBusy}>
-                Withdraw
-              </Button>
-            </form>
-          </div>
+              Withdraw
+            </Button>
+          </form>
+
+          <p className="text-[11px] text-muted-foreground/50">
+            Multiples of £5 only
+          </p>
 
           {suggestedAmounts.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
+            <div className="space-y-2 pt-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Quick select
+              </p>
               <div className="flex flex-wrap gap-2">
                 {suggestedAmounts.map((amount) => (
-                  <Button
+                  <button
                     key={amount}
-                    variant="secondary"
-                    size="sm"
+                    type="button"
                     disabled={isBusy}
-                    onClick={() => runWithdraw(amount)}
+                    onClick={() => handleChipClick(amount)}
+                    className={[
+                      "inline-flex items-center justify-center rounded-lg px-3.5 py-1.5 text-sm font-medium tabular-nums",
+                      "border transition-all duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                      "disabled:opacity-40 disabled:pointer-events-none",
+                      String(amount) === withdrawalAmount
+                        ? "border-primary/40 bg-primary/8 text-primary shadow-sm"
+                        : "border-border/60 bg-secondary/50 text-foreground hover:bg-secondary hover:border-border active:scale-[0.96] active:bg-secondary/80",
+                    ].join(" ")}
                   >
                     £{amount}
-                  </Button>
+                  </button>
                 ))}
               </div>
             </div>
@@ -278,31 +302,62 @@ export default function AtmDashboard({
       </Card>
 
       {/* Transaction History */}
-      <Card>
-        <CardHeader className="pb-3 px-5 pt-5">
-          <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <History className="h-4 w-4" /> Transaction History
+      <Card className="border border-border/40">
+        <CardHeader className="pb-2 px-5 pt-5">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <History className="h-3.5 w-3.5" />
+            Recent Activity
           </CardTitle>
         </CardHeader>
         <CardContent className="px-5 pb-5">
           {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions yet</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 mb-3">
+                <Receipt className="h-4 w-4 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                No transactions yet
+              </p>
+              <p className="text-xs text-muted-foreground/50 mt-0.5">
+                Your withdrawals will appear here
+              </p>
+            </div>
           ) : (
-            <ul className="space-y-2">
-              {transactions.map((tx) => (
-                <li key={tx.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
-                  <div>
-                    <span className="font-medium text-foreground">-£{tx.amount}</span>
-                    <span className="ml-2 text-muted-foreground">
-                      {tx.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <ul className="space-y-1.5">
+              {transactions.map((tx, index) => (
+                <li
+                  key={tx.id}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted/30"
+                  style={{ animationDelay: `${index * 40}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50">
+                      <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-semibold tabular-nums text-foreground">
+                        −£{tx.amount.toFixed(2)}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                        <Clock className="h-2.5 w-2.5" />
+                        {tx.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`text-xs font-medium tabular-nums ${
+                        tx.balanceAfter < 0
+                          ? "text-warning"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      £{tx.balanceAfter.toFixed(2)}
                     </span>
                   </div>
-                  <span
-                    className={`font-medium tabular-nums ${tx.balanceAfter < 0 ? "text-warning" : "text-foreground"}`}
-                    title="Balance after withdrawal"
-                  >
-                    £{tx.balanceAfter.toFixed(2)}
-                  </span>
                 </li>
               ))}
             </ul>

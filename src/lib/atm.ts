@@ -132,13 +132,13 @@ export function processWithdrawal(amount: number, inventory: NoteInventory): Wit
   }
 
   if (amount > calculateTotalCash(inventory)) {
-    return createFailureResult("ATM has insufficient cash for this withdrawal.", inventory);
+    return createFailureResult("This amount is unavailable from this ATM right now. Please try a different amount.", inventory);
   }
 
   const notesDispensed = selectBestNoteCombination(amount, inventory);
   if (!notesDispensed) {
     return createFailureResult(
-      "Cannot dispense exact amount with current note inventory.",
+      "Unable to dispense this exact amount. Please try a different amount.",
       inventory,
     );
   }

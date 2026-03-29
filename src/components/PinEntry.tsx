@@ -75,19 +75,23 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm animate-fade-in-up">
+      <div className="w-full max-w-[22rem] animate-fade-in-up">
         {/* Branding */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 shadow-sm">
-            <ShieldCheck className="h-6 w-6 text-primary" />
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/8 shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.12)]">
+            <ShieldCheck className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Secure Login</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Enter your 4-digit PIN</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Secure Login
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Enter your 4-digit PIN
+          </p>
         </div>
 
-        <Card className="border-border/40 shadow-[0_4px_24px_-8px_hsl(var(--foreground)/0.06)]">
-          <CardContent className="pt-10 pb-8 px-8">
-            <form onSubmit={handleSubmit} className="space-y-7">
+        <Card className="border-border/30 shadow-[0_8px_32px_-12px_hsl(var(--foreground)/0.08)]">
+          <CardContent className="pt-10 pb-9 px-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {/* Hidden input */}
               <input
                 ref={hiddenRef}
@@ -119,33 +123,35 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                 {Array.from({ length: 4 }, (_, i) => {
                   const isFilled = i < pin.length;
                   const isActive = focused && i === activeIndex && activeIndex < 4;
-                  const isCompleted = focused && pin.length === 4;
+                  const allFilled = focused && pin.length === 4;
 
                   return (
                     <div
                       key={i}
                       className={[
-                        "relative flex h-14 w-14 items-center justify-center rounded-xl border-2 transition-all duration-200 ease-out",
+                        "relative flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-xl border-2 transition-all duration-[250ms] ease-out",
                         isFilled
-                          ? "border-primary bg-primary/6 shadow-[0_0_0_3px_hsl(var(--primary)/0.06)]"
+                          ? "border-primary bg-primary/[0.06]"
                           : isActive
-                            ? "border-primary bg-primary/[0.04] shadow-[0_0_0_4px_hsl(var(--primary)/0.10)] scale-[1.04]"
-                            : "border-border/40 bg-muted/20",
-                        isCompleted && isFilled
-                          ? "border-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
+                            ? "border-primary/70 bg-primary/[0.03] scale-105 shadow-[0_0_0_5px_hsl(var(--primary)/0.08)]"
+                            : "border-border/30 bg-muted/15",
+                        allFilled && isFilled
+                          ? "shadow-[0_0_0_3px_hsl(var(--primary)/0.06)]"
                           : "",
                       ].join(" ")}
                     >
-                      <div
-                        className={[
-                          "rounded-full transition-all duration-200",
-                          isFilled
-                            ? "h-3 w-3 bg-primary"
-                            : isActive
-                              ? "h-2.5 w-2.5 bg-primary/40 animate-pulse"
-                              : "h-2 w-2 bg-border/30",
-                        ].join(" ")}
-                      />
+                      {isFilled ? (
+                        <div className="h-3 w-3 rounded-full bg-primary transition-transform duration-150 scale-100" />
+                      ) : (
+                        <div
+                          className={[
+                            "rounded-full transition-all duration-[250ms]",
+                            isActive
+                              ? "h-2.5 w-2.5 bg-primary/35 animate-pulse"
+                              : "h-[7px] w-[7px] bg-border/25",
+                          ].join(" ")}
+                        />
+                      )}
                     </div>
                   );
                 })}
@@ -153,7 +159,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
 
               {/* Error */}
               {error && (
-                <p className="text-sm text-destructive text-center font-medium animate-slide-down">
+                <p className="text-sm text-destructive text-center font-medium animate-fade-in">
                   {error}
                 </p>
               )}
@@ -161,7 +167,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               {/* Submit */}
               <Button
                 type="submit"
-                className="w-full h-12 text-sm font-semibold tracking-wide transition-all duration-150 active:scale-[0.98]"
+                className="w-full h-[2.875rem] text-sm font-semibold tracking-wide transition-all duration-150 active:scale-[0.98] shadow-[0_1px_3px_0_hsl(var(--primary)/0.15)]"
                 disabled={loading || pin.length !== 4}
               >
                 {loading ? (
@@ -176,7 +182,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
             </form>
 
             {/* Footer */}
-            <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60">
+            <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/40">
               <Lock className="h-3 w-3" />
               <span>Secure connection</span>
             </div>

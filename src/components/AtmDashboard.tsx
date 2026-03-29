@@ -53,6 +53,8 @@ export default function AtmDashboard({
   const [successVisible, setSuccessVisible] = useState(false);
   const [successFading, setSuccessFading] = useState(false);
   const fadeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const successRef = useRef<HTMLDivElement>(null);
+  const [bannerHeight, setBannerHeight] = useState<number>(0);
 
   useEffect(() => {
     if (stage === "collect") {
@@ -61,14 +63,24 @@ export default function AtmDashboard({
     }
   }, [stage]);
 
+  // Measure banner height once it's rendered in "collect" stage
+  useEffect(() => {
+    if (successVisible && !successFading && successRef.current) {
+      setBannerHeight(successRef.current.scrollHeight);
+    }
+  }, [successVisible, successFading]);
+
   useEffect(() => {
     if (successVisible && stage === "idle") {
-      // stage just returned to idle — start fade-out
-      setSuccessFading(true);
+      // small delay so the browser paints the full-height state first
+      requestAnimationFrame(() => {
+        setSuccessFading(true);
+      });
       fadeTimer.current = setTimeout(() => {
         setSuccessVisible(false);
         setSuccessFading(false);
-      }, 500);
+        setBannerHeight(0);
+      }, 400);
     }
     return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
   }, [stage, successVisible]);

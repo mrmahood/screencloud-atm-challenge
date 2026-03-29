@@ -85,9 +85,9 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
           <p className="mt-1 text-sm text-muted-foreground">Enter your 4-digit PIN</p>
         </div>
 
-        <Card className="border-border/50 shadow-lg">
-          <CardContent className="pt-8 pb-8 px-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="border-border/40 shadow-[0_4px_24px_-8px_hsl(var(--foreground)/0.06)]">
+          <CardContent className="pt-10 pb-8 px-8">
+            <form onSubmit={handleSubmit} className="space-y-7">
               {/* Hidden input */}
               <input
                 ref={hiddenRef}

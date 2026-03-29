@@ -12,6 +12,7 @@ export interface Transaction {
   amount: number;
   timestamp: Date;
   balanceAfter: number;
+  dispensedNotes: NoteInventory;
 }
 
 const OVERDRAFT_LIMIT = -100;
@@ -30,6 +31,24 @@ export function useAtm() {
   const [notes, setNotes] = useState<NoteInventory>({ ...INITIAL_NOTE_INVENTORY });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const canWithdraw = useCallback(
+    (amount: number): { possible: boolean; reason?: string } => {
+      if (balance === null) return { possible: false, reason: "Not authenticated" };
+      if (balance - amount < OVERDRAFT_LIMIT) {
+        return { possible: false, reason: "Exceeds overdraft limit" };
+      }
+      if (amount > getTotalCash(notes)) {
+        return { possible: false, reason: "ATM has insufficient cash" };
+      }
+      const dispensed = dispenseNotes(amount, notes);
+      if (!dispensed) {
+        return { possible: false, reason: "Cannot dispense exact amount" };
+      }
+      return { possible: true };
+    },
+    [balance, notes]
+  );
 
   const withdraw = useCallback(
     (amount: number): WithdrawalResult => {
@@ -59,6 +78,7 @@ export function useAtm() {
           amount,
           timestamp: new Date(),
           balanceAfter: newBalance,
+          dispensedNotes: dispensed,
         },
         ...previousTransactions,
       ]);
@@ -83,5 +103,5 @@ export function useAtm() {
     setError(null);
   }, []);
 
-  return { balance, notes, transactions, error, setError, withdraw, login, reset };
+  return { balance, notes, transactions, error, setError, withdraw, canWithdraw, login, reset };
 }

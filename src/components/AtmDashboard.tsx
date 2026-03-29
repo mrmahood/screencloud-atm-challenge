@@ -30,7 +30,7 @@ interface Props {
   onReset: () => void;
 }
 
-type TxStage = "idle" | "processing" | "dispensing" | "collect";
+type TxStage = "idle" | "processing" | "dispensing" | "collect" | "fading";
 
 export default function AtmDashboard({
   balance,
@@ -47,7 +47,7 @@ export default function AtmDashboard({
   const [stage, setStage] = useState<TxStage>("idle");
   const [lastSuccess, setLastSuccess] = useState<number | null>(null);
   const stageTimer = useRef<ReturnType<typeof setTimeout>>();
-  const isBusy = stage !== "idle";
+  const isBusy = stage !== "idle" && stage !== "fading";
 
   const parsedWithdrawalAmount = Number(withdrawalAmount);
   const canSubmitWithdrawal =
@@ -83,8 +83,12 @@ export default function AtmDashboard({
           setStage("collect");
 
           stageTimer.current = setTimeout(() => {
-            setStage("idle");
-          }, 2500);
+            setStage("fading");
+
+            stageTimer.current = setTimeout(() => {
+              setStage("idle");
+            }, 400);
+          }, 2200);
         }, 800);
       }, 600);
     },
@@ -123,8 +127,17 @@ export default function AtmDashboard({
           </div>
         );
       case "collect":
+      case "fading":
         return (
-          <div className="flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground animate-fade-in">
+          <div
+            className={[
+              "flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground",
+              "transition-all duration-300 ease-out",
+              stage === "fading"
+                ? "opacity-0 translate-y-[-4px]"
+                : "opacity-100 translate-y-0 animate-fade-in",
+            ].join(" ")}
+          >
             <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
             Please take your cash — £{lastSuccess} dispensed.
           </div>

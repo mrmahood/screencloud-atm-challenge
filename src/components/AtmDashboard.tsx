@@ -237,6 +237,22 @@ export default function AtmDashboard({
       {/* Stage / status banners */}
       {stageBanner}
 
+      {/* Lingering success banner — stays mounted during fade-out */}
+      {successVisible && stage === "idle" && (
+        <div
+          className={[
+            "flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground",
+            "transition-all duration-500 ease-out",
+            successFading
+              ? "opacity-0 -translate-y-1"
+              : "opacity-100 translate-y-0",
+          ].join(" ")}
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+          Please take your cash — £{lastSuccess} dispensed.
+        </div>
+      )}
+
       {/* Error banner */}
       {error && stage === "idle" && (
         <div className="flex items-center gap-3 rounded-xl bg-destructive/8 border border-destructive/15 px-5 py-3.5 text-sm font-medium text-destructive animate-fade-in">

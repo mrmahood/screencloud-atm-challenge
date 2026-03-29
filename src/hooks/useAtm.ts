@@ -12,6 +12,7 @@ export interface Transaction {
   amount: number;
   timestamp: Date;
   balanceAfter: number;
+  dispensedNotes: NoteInventory;
 }
 
 const OVERDRAFT_LIMIT = -100;
@@ -59,6 +60,7 @@ export function useAtm() {
           amount,
           timestamp: new Date(),
           balanceAfter: newBalance,
+          dispensedNotes: dispensed,
         },
         ...previousTransactions,
       ]);
@@ -83,5 +85,5 @@ export function useAtm() {
     setError(null);
   }, []);
 
-  return { balance, notes, transactions, error, setError, withdraw, login, reset };
+  return { balance, notes, transactions, error, setError, withdraw, canWithdraw, login, reset };
 }

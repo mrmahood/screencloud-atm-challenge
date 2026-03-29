@@ -156,7 +156,7 @@ export default function AtmDashboard({
               <AlertTriangle className="h-4 w-4 text-warning" />
               <AlertTitle className="text-warning">Overdrawn</AlertTitle>
               <AlertDescription className="text-muted-foreground">
-                You are £{Math.abs(balance).toFixed(2)} overdrawn. £{overdraftRemaining.toFixed(2)} remaining before limit.
+                You are £{Math.abs(balance).toFixed(2)} overdrawn.
               </AlertDescription>
             </Alert>
           )}

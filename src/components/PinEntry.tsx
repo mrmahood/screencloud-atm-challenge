@@ -12,11 +12,12 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sanitizePin = (value: string) => value.replace(/\D/g, "").slice(0, 4);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
+    if (pin.length !== 4) {
+      setError("PIN must be exactly 4 digits.");
       return;
     }
 
@@ -59,11 +60,31 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
             <Input
               type="password"
               inputMode="numeric"
-              maxLength={8}
+              maxLength={4}
+              pattern="[0-9]*"
               placeholder="••••"
               value={pin}
               onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, ""));
+                setPin(sanitizePin(e.target.value));
+                setError(null);
+              }}
+              onBeforeInput={(e) => {
+                const nativeEvent = e.nativeEvent as InputEvent;
+                const isInsertAction = nativeEvent.inputType?.startsWith("insert");
+                const nextChar = nativeEvent.data ?? "";
+
+                if (!isInsertAction) {
+                  return;
+                }
+
+                if (/\D/.test(nextChar) || pin.length >= 4) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pastedValue = e.clipboardData.getData("text");
+                setPin(sanitizePin(pastedValue));
                 setError(null);
               }}
               className="text-center text-2xl tracking-[0.5em] h-14"
@@ -72,7 +93,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
             {error && (
               <p className="text-sm text-destructive text-center font-medium">{error}</p>
             )}
-            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length < 4}>
+            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length !== 4}>
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enter"}
             </Button>
           </form>

@@ -85,7 +85,7 @@ describe("ATM withdrawal failure cases", () => {
       success: false,
       notesDispensed: { 5: 0, 10: 0, 20: 0 },
       updatedInventory: { 5: 1, 10: 1, 20: 2 },
-      message: "This amount is unavailable from this ATM right now. Please try a different amount.",
+      message: "ATM has insufficient cash for this withdrawal.",
     });
   });
 
@@ -96,7 +96,7 @@ describe("ATM withdrawal failure cases", () => {
       success: false,
       notesDispensed: { 5: 0, 10: 0, 20: 0 },
       updatedInventory: { 5: 0, 10: 2, 20: 2 },
-      message: "Unable to dispense this exact amount. Please try a different amount.",
+      message: "Cannot dispense exact amount with current note inventory.",
     });
   });
 
@@ -307,7 +307,7 @@ describe("Michael withdrawal permutations (140, 50, 90)", () => {
     expect(unique.size).toBe(6);
   });
 
-  it.each(permutations.map((p) => [p]))(
+  it.each(permutations)(
     "processes permutation %j with inventory/balance updates, overdraft checks, result shape consistency, and dynamic suggestions",
     (permutation) => {
       let balance = 170;
@@ -365,5 +365,84 @@ describe("Michael withdrawal permutations (140, 50, 90)", () => {
 
     const suggestionsAfter = getSuggestedWithdrawalAmounts(inventory, -90);
     expect(suggestionsAfter).toEqual(suggestionsBefore);
+  });
+});
+
+describe("ATM denomination depletion and exhaustion", () => {
+  it("handles £20 note exhaustion and still dispenses using remaining denominations", () => {
+    const first = processWithdrawal(140, INITIAL_NOTE_INVENTORY);
+    expect(first.success).toBe(true);
+
+    const second = processWithdrawal(50, first.updatedInventory);
+    expect(second.success).toBe(true);
+    expect(second.updatedInventory[20]).toBe(0);
+
+    const third = processWithdrawal(40, second.updatedInventory);
+    expect(third).toMatchObject({
+      success: true,
+      notesDispensed: { 5: 0, 10: 4, 20: 0 },
+    });
+  });
+
+  it("handles £10 note exhaustion and rejects amounts that are no longer dispensable", () => {
+    const inventory: NoteInventory = { 5: 1, 10: 1, 20: 4 };
+
+    const first = processWithdrawal(90, inventory);
+    expect(first.success).toBe(true);
+    expect(first.updatedInventory).toEqual({ 5: 1, 10: 0, 20: 0 });
+
+    const second = processWithdrawal(10, first.updatedInventory);
+    expect(second).toMatchObject({
+      success: false,
+      message: "Cannot dispense exact amount with current note inventory.",
+    });
+  });
+
+  it("handles £5 note depletion and rejects valid amounts requiring £5 notes", () => {
+    const inventory: NoteInventory = { 5: 1, 10: 10, 20: 2 };
+
+    const first = processWithdrawal(35, inventory);
+    expect(first.success).toBe(true);
+    expect(first.updatedInventory[5]).toBe(0);
+
+    const second = processWithdrawal(15, first.updatedInventory);
+    expect(second).toMatchObject({
+      success: false,
+      message: "Cannot dispense exact amount with current note inventory.",
+    });
+  });
+
+  it("updates suggested amounts correctly after denomination depletion", () => {
+    const inventory: NoteInventory = { 5: 0, 10: 3, 20: 0 };
+    const suggestions = getSuggestedWithdrawalAmounts(inventory, 100);
+
+    expect(suggestions).toEqual([10, 30, 20]);
+    suggestions.forEach((amount) => {
+      expect(processWithdrawal(amount, inventory).success).toBe(true);
+    });
+  });
+
+  it("processes Michael's £140, £50, £90 in all 6 permutations with evolving inventory when balance allows all", () => {
+    const permutations = getPermutations([140, 50, 90]);
+
+    permutations.forEach((permutation) => {
+      let balance = 500;
+      let inventory: NoteInventory = { ...INITIAL_NOTE_INVENTORY };
+
+      permutation.forEach((amount) => {
+        const { balanceAfter, result } = attemptAccountWithdrawal({ balance, amount, inventory });
+
+        expect(result.success).toBe(true);
+        expect(result.updatedInventory[20]).toBeGreaterThanOrEqual(0);
+        expect(result.updatedInventory[10]).toBeGreaterThanOrEqual(0);
+        expect(result.updatedInventory[5]).toBeGreaterThanOrEqual(0);
+
+        inventory = result.updatedInventory;
+        balance = balanceAfter;
+      });
+
+      expect(balance).toBe(220);
+      expect(inventory).toEqual({ 5: 2, 10: 3, 20: 0 });
+    });
   });
 });

@@ -21,9 +21,8 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
-      triggerShake();
+    if (pin.length !== 4) {
+      setError("PIN must be exactly 4 digits.");
       return;
     }
 
@@ -71,11 +70,20 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
             <Input
               type="password"
               inputMode="numeric"
-              maxLength={8}
+              maxLength={4}
+              pattern="[0-9]*"
               placeholder="••••"
               value={pin}
               onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, ""));
+                const numericPin = e.target.value.replace(/\D/g, "").slice(0, 4);
+                setPin(numericPin);
+                setError(null);
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pastedValue = e.clipboardData.getData("text");
+                const numericPin = pastedValue.replace(/\D/g, "").slice(0, 4);
+                setPin(numericPin);
                 setError(null);
               }}
               className={`text-center text-2xl tracking-[0.5em] h-14 ${shake ? "animate-shake" : ""}`}
@@ -87,15 +95,8 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length < 4}>
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Verifying…
-                </span>
-              ) : (
-                "Enter"
-              )}
+            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length !== 4}>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enter"}
             </Button>
           </form>
         </CardContent>

@@ -15,7 +15,7 @@ export interface Transaction {
   dispensedNotes: NoteInventory;
 }
 
-const OVERDRAFT_LIMIT = -100;
+export const OVERDRAFT_LIMIT = -100;
 
 function createHookFailureResult(message: string, notes: NoteInventory): WithdrawalResult {
   return {
@@ -60,7 +60,7 @@ export function useAtm() {
           amount,
           timestamp: new Date(),
           balanceAfter: newBalance,
-          dispensedNotes: dispensed,
+          dispensedNotes: result.notesDispensed,
         },
         ...previousTransactions,
       ]);
@@ -85,5 +85,5 @@ export function useAtm() {
     setError(null);
   }, []);
 
-  return { balance, notes, transactions, error, setError, withdraw, canWithdraw, login, reset };
+  return { balance, notes, transactions, error, setError, withdraw, login, reset };
 }

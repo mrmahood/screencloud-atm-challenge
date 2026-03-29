@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Lock } from "lucide-react";
 
@@ -12,11 +11,16 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sanitizePin = (value: string) => value.replace(/\D/g, "").slice(0, 4);
+  const updatePin = (rawValue: string) => {
+    setPin(sanitizePin(rawValue));
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
+    if (pin.length !== 4) {
+      setError("PIN must be exactly 4 digits.");
       return;
     }
 
@@ -56,23 +60,28 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
+            <input
               type="password"
               inputMode="numeric"
-              maxLength={8}
+              maxLength={4}
+              pattern="[0-9]*"
               placeholder="••••"
               value={pin}
               onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, ""));
-                setError(null);
+                updatePin(e.currentTarget.value);
               }}
-              className="text-center text-2xl tracking-[0.5em] h-14"
+              onPaste={(e) => {
+                e.preventDefault();
+                const pastedValue = e.clipboardData.getData("text");
+                updatePin(pastedValue);
+              }}
+              className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-center text-2xl tracking-[0.5em] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               autoFocus
             />
             {error && (
               <p className="text-sm text-destructive text-center font-medium">{error}</p>
             )}
-            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length < 4}>
+            <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length !== 4}>
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enter"}
             </Button>
           </form>

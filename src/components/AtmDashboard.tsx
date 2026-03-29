@@ -144,9 +144,11 @@ export default function AtmDashboard({
               >
                 £{balance.toFixed(2)}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Overdraft limit: -£{Math.abs(OVERDRAFT_LIMIT).toFixed(2)}
-              </p>
+              {isOverdrawn && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Overdraft limit: -£{Math.abs(OVERDRAFT_LIMIT).toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
           {isOverdrawn && (

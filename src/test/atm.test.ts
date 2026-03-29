@@ -307,7 +307,7 @@ describe("Michael withdrawal permutations (140, 50, 90)", () => {
     expect(unique.size).toBe(6);
   });
 
-  it.each(permutations)(
+  it.each(permutations.map((p) => [p]))(
     "processes permutation %j with inventory/balance updates, overdraft checks, result shape consistency, and dynamic suggestions",
     (permutation) => {
       let balance = 170;

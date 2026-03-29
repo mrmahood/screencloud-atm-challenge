@@ -1,23 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   NoteInventory,
   WithdrawalResult,
+  calculateTotalCash,
   getSuggestedWithdrawalAmounts,
 } from "@/lib/atm";
 import { Transaction } from "@/hooks/useAtm";
-import {
-  AlertTriangle,
-  ArrowDownRight,
-  Banknote,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  LogOut,
-  Wallet,
-} from "lucide-react";
+import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
 
 interface Props {
   balance: number;
@@ -29,12 +21,6 @@ interface Props {
   onReset: () => void;
 }
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-type TxStage = "idle" | "processing" | "dispensing" | "collect";
-
 export default function AtmDashboard({
   balance,
   notes,
@@ -45,64 +31,36 @@ export default function AtmDashboard({
   onReset,
 }: Props) {
   const isOverdrawn = balance < 0;
-  const [withdrawalAmount, setWithdrawalAmount] = useState("");
-  const [confirmingReset, setConfirmingReset] = useState(false);
-  const [stage, setStage] = useState<TxStage>("idle");
-  const [lastSuccess, setLastSuccess] = useState<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+  const parsedWithdrawalAmount = Number(withdrawalAmount);
+  const canSubmitWithdrawal =
+    Number.isFinite(parsedWithdrawalAmount) &&
+    parsedWithdrawalAmount > 0 &&
+    parsedWithdrawalAmount % 5 === 0;
 
-  const suggestedAmounts = useMemo(
-    () => getSuggestedWithdrawalAmounts(notes, balance),
-    [notes, balance],
-  );
+  const suggestedAmounts = useMemo(() => getSuggestedWithdrawalAmounts(notes, balance), [notes, balance]);
 
-  const showSuggestions = balance > 0 && suggestedAmounts.length > 0;
-  const isBusy = stage !== "idle";
+  const handleWithdraw = (amount: number) => {
+    const result = onWithdraw(amount);
 
-  const runWithdraw = useCallback(
-    (amount: number) => {
-      if (isBusy) return;
-      clearTimeout(timerRef.current);
-      onSetError(null);
-      setLastSuccess(null);
-      setStage("processing");
+    if (!result.success) {
+      onSetError(result.message);
+      return;
+    }
 
-      // Stage 1: "Processing…" (600ms) → execute logic
-      timerRef.current = setTimeout(() => {
-        const result = onWithdraw(amount);
-
-        if (!result.success) {
-          onSetError(result.message);
-          setStage("idle");
-          return;
-        }
-
-        // Stage 2: "Dispensing cash…" (800ms)
-        setStage("dispensing");
-        setWithdrawalAmount("");
-
-        timerRef.current = setTimeout(() => {
-          // Stage 3: "Please take your cash" (2.5s)
-          setStage("collect");
-          setLastSuccess(amount);
-
-          timerRef.current = setTimeout(() => {
-            setStage("idle");
-            setLastSuccess(null);
-          }, 2500);
-        }, 800);
-      }, 600);
-    },
-    [isBusy, onWithdraw, onSetError],
-  );
+    onSetError(null);
+    setWithdrawalAmount("");
+  };
 
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
+
     if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
       onSetError("Enter a valid withdrawal amount in multiples of £5.");
       return;
     }
-    runWithdraw(amount);
+
+    handleWithdraw(amount);
   };
 
   /* Stage banner content */
@@ -256,92 +214,108 @@ export default function AtmDashboard({
             </Button>
           </div>
 
-          {showSuggestions && (
-            <div className="space-y-2 pt-0.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                Quick amounts
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {suggestedAmounts
-                  .sort((a, b) => a - b)
-                  .map((amount) => (
-                    <button
+        {/* Withdraw */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Withdraw Cash</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form
+              className="flex flex-col gap-3 sm:flex-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSubmitWithdraw();
+              }}
+            >
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                inputMode="numeric"
+                placeholder="Enter amount (e.g. 50)"
+                value={withdrawalAmount}
+                onChange={(event) => {
+                  setWithdrawalAmount(event.target.value);
+                  if (error) {
+                    onSetError(null);
+                  }
+                }}
+              />
+              <Button type="submit" className="sm:w-40" disabled={!canSubmitWithdrawal}>
+                Withdraw
+              </Button>
+            </form>
+
+            {suggestedAmounts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedAmounts.map((amount) => (
+                    <Button
                       key={amount}
-                      onClick={() => setWithdrawalAmount(String(amount))}
-                      disabled={isBusy}
-                      className={`inline-flex h-8 items-center rounded-md border px-3.5 text-sm font-medium tabular-nums transition-all duration-150 
-                        ${
-                          withdrawalAmount === String(amount)
-                            ? "border-primary/40 bg-primary/8 text-primary shadow-sm"
-                            : "border-border/60 bg-secondary/50 text-secondary-foreground hover:bg-secondary hover:border-border active:scale-[0.97]"
-                        }`}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleWithdraw(amount)}
                     >
                       £{amount}
-                    </button>
+                    </Button>
                   ))}
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Transaction History */}
-      <Card className="card-elevated border-border/40">
-        <CardHeader className="pb-2 px-5 pt-4">
-          <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-5 pb-4">
-          {transactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/60 mb-3">
-                <Clock className="h-4 w-4 text-muted-foreground/50" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                No transactions yet
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">
-                Withdrawals will appear here
-              </p>
-            </div>
-          ) : (
-            <ul className="space-y-0.5">
-              {transactions.map((tx, i) => (
-                <li
-                  key={tx.id}
-                  className="group flex items-center justify-between rounded-md px-2 py-2.5 -mx-2 transition-colors hover:bg-muted/40"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/60">
-                      <ArrowDownRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold tabular-nums text-foreground">
-                        −£{tx.amount}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground/70">
-                        {formatTime(tx.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-sm font-medium tabular-nums ${
-                      tx.balanceAfter < 0
-                        ? "text-warning"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    £{tx.balanceAfter.toFixed(2)}
-                  </span>
-                </li>
+        {/* Note Inventory */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Banknote className="h-4 w-4" /> Note Inventory
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {([5, 10, 20] as const).map((denom) => (
+                <div key={denom} className="rounded-lg bg-secondary p-3 text-center">
+                  <p className="text-lg font-bold text-foreground">£{denom}</p>
+                  <p className="text-sm text-muted-foreground">{notes[denom]} left</p>
+                </div>
               ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground text-right">
+              Total cash available: £{calculateTotalCash(notes)}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Transaction History */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <History className="h-4 w-4" /> Transaction History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No transactions yet</p>
+            ) : (
+              <ul className="space-y-2">
+                {transactions.map((tx) => (
+                  <li key={tx.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
+                    <div>
+                      <span className="font-medium text-foreground">-£{tx.amount}</span>
+                      <span className="ml-2 text-muted-foreground">{tx.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    <span className={`font-medium tabular-nums ${tx.balanceAfter < 0 ? "text-warning" : "text-foreground"}`} title="Balance after withdrawal">
+                      £{tx.balanceAfter.toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Loader2, Lock } from "lucide-react";
 
 interface PinEntryProps {
   onSuccess: (balance: number) => void;
@@ -42,7 +42,12 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
       const data = await res.json();
       onSuccess(data.currentBalance);
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      const message =
+        err instanceof TypeError
+          ? "Unable to connect. Please try again."
+          : err.message || "Something went wrong";
+      setError(message);
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -67,6 +72,9 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               pattern="[0-9]*"
               placeholder="••••"
               value={pin}
+              onInput={(e) => {
+                updatePin(e.currentTarget.value, e.currentTarget);
+              }}
               onChange={(e) => {
                 updatePin(e.currentTarget.value);
               }}
@@ -79,7 +87,10 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               autoFocus
             />
             {error && (
-              <p className="text-sm text-destructive text-center font-medium">{error}</p>
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
             )}
             <Button type="submit" className="w-full h-12 text-base" disabled={loading || pin.length !== 4}>
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Enter"}

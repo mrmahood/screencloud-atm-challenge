@@ -47,7 +47,7 @@ export default function AtmDashboard({
   const [stage, setStage] = useState<TxStage>("idle");
   const [lastSuccess, setLastSuccess] = useState<number | null>(null);
   const stageTimer = useRef<ReturnType<typeof setTimeout>>();
-  const isBusy = stage !== "idle";
+  const isBusy = stage !== "idle" && stage !== "fading";
 
   const parsedWithdrawalAmount = Number(withdrawalAmount);
   const canSubmitWithdrawal =

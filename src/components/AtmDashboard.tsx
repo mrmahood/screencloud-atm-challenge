@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ interface Props {
   onReset: () => void;
 }
 
-type TxStage = "idle" | "processing" | "dispensing" | "collect" | "fading";
+type TxStage = "idle" | "processing" | "dispensing" | "collect";
 
 export default function AtmDashboard({
   balance,
@@ -47,7 +47,31 @@ export default function AtmDashboard({
   const [stage, setStage] = useState<TxStage>("idle");
   const [lastSuccess, setLastSuccess] = useState<number | null>(null);
   const stageTimer = useRef<ReturnType<typeof setTimeout>>();
-  const isBusy = stage !== "idle" && stage !== "fading";
+  const isBusy = stage !== "idle";
+
+  // Keep success banner mounted during fade-out so CSS transition can play
+  const [successVisible, setSuccessVisible] = useState(false);
+  const [successFading, setSuccessFading] = useState(false);
+  const fadeTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (stage === "collect") {
+      setSuccessVisible(true);
+      setSuccessFading(false);
+    }
+  }, [stage]);
+
+  useEffect(() => {
+    if (successVisible && stage === "idle") {
+      // stage just returned to idle — start fade-out
+      setSuccessFading(true);
+      fadeTimer.current = setTimeout(() => {
+        setSuccessVisible(false);
+        setSuccessFading(false);
+      }, 500);
+    }
+    return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
+  }, [stage, successVisible]);
 
   const parsedWithdrawalAmount = Number(withdrawalAmount);
   const canSubmitWithdrawal =
@@ -83,12 +107,8 @@ export default function AtmDashboard({
           setStage("collect");
 
           stageTimer.current = setTimeout(() => {
-            setStage("fading");
-
-            stageTimer.current = setTimeout(() => {
-              setStage("idle");
-            }, 400);
-          }, 2200);
+            setStage("idle");
+          }, 2400);
         }, 800);
       }, 600);
     },
@@ -127,17 +147,8 @@ export default function AtmDashboard({
           </div>
         );
       case "collect":
-      case "fading":
         return (
-          <div
-            className={[
-              "flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground",
-              "transition-all duration-300 ease-out",
-              stage === "fading"
-                ? "opacity-0 translate-y-[-4px]"
-                : "opacity-100 translate-y-0 animate-fade-in",
-            ].join(" ")}
-          >
+          <div className="flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground animate-fade-in">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
             Please take your cash — £{lastSuccess} dispensed.
           </div>
@@ -225,6 +236,22 @@ export default function AtmDashboard({
 
       {/* Stage / status banners */}
       {stageBanner}
+
+      {/* Lingering success banner — stays mounted during fade-out */}
+      {successVisible && stage === "idle" && (
+        <div
+          className={[
+            "flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground",
+            "transition-all duration-500 ease-out",
+            successFading
+              ? "opacity-0 -translate-y-1"
+              : "opacity-100 translate-y-0",
+          ].join(" ")}
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+          Please take your cash — £{lastSuccess} dispensed.
+        </div>
+      )}
 
       {/* Error banner */}
       {error && stage === "idle" && (

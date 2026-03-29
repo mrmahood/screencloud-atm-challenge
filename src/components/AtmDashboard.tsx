@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   NoteInventory,
   WithdrawalResult,
@@ -21,6 +22,28 @@ interface Props {
   onReset: () => void;
 }
 
+function NoteStatusDot({ count }: { count: number }) {
+  const color =
+    count === 0
+      ? "bg-destructive"
+      : count <= 3
+        ? "bg-warning"
+        : "bg-emerald-500";
+  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />;
+}
+
+function noteSummary(dispensed: NoteInventory): string {
+  const parts: string[] = [];
+  if (dispensed[20] > 0) parts.push(`${dispensed[20]}×£20`);
+  if (dispensed[10] > 0) parts.push(`${dispensed[10]}×£10`);
+  if (dispensed[5] > 0) parts.push(`${dispensed[5]}×£5`);
+  return parts.join(", ") || "—";
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AtmDashboard({
   balance,
   notes,
@@ -32,34 +55,25 @@ export default function AtmDashboard({
 }: Props) {
   const isOverdrawn = balance < 0;
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
-  const suggestedAmounts = useMemo(() => getSuggestedWithdrawalAmounts(notes, balance), [notes, balance]);
+  const suggestedAmounts = useMemo(
+    () => getSuggestedWithdrawalAmounts(notes, balance).sort((a, b) => a - b),
+    [notes, balance],
+  );
 
   const handleWithdraw = (amount: number) => {
     const result = onWithdraw(amount);
-
     if (!result.success) {
       onSetError(result.message);
       return;
     }
-
     onSetError(null);
     setWithdrawalAmount("");
   };
 
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
-      return;
-    }
-
-    handleWithdraw(amount);
-  };
-
-  const handleSubmitWithdraw = () => {
-    const amount = Number(withdrawalAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
       onSetError("Enter a valid withdrawal amount in multiples of £5.");
       return;
@@ -67,7 +81,7 @@ export default function AtmDashboard({
     handleWithdraw(amount);
   };
 
-  const overdraftRemaining = Math.abs(OVERDRAFT_LIMIT) + balance;
+  const showSuggestions = balance > 0 && suggestedAmounts.length > 0;
 
   return (
     <div className="mx-auto max-w-lg space-y-5 p-4 sm:p-6">
@@ -153,7 +167,9 @@ export default function AtmDashboard({
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">£</span>
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                £
+              </span>
               <Input
                 type="number"
                 min={5}
@@ -174,70 +190,72 @@ export default function AtmDashboard({
             Withdrawals must be in multiples of £5
           </p>
 
-        {/* Withdraw */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Withdraw Cash</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Input
-                type="number"
-                min={5}
-                step={5}
-                inputMode="numeric"
-                placeholder="Enter amount (e.g. 50)"
-                value={withdrawalAmount}
-                onChange={(event) => setWithdrawalAmount(event.target.value)}
-              />
-              <Button className="sm:w-40" onClick={handleSubmitWithdraw}>
-                Withdraw
-              </Button>
+          {showSuggestions && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Suggested amounts
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedAmounts.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setWithdrawalAmount(String(amount));
+                      onSetError(null);
+                    }}
+                  >
+                    £{amount}
+                  </Button>
+                ))}
+              </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
 
-            {suggestedAmounts.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
-                <div className="flex flex-wrap gap-2">
-                  {suggestedAmounts.map((amount) => (
-                    <Button
-                      key={amount}
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleWithdraw(amount)}
-                    >
-                      £{amount}
-                    </Button>
-                  ))}
+      {/* Note Inventory */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Banknote className="h-4 w-4" /> Note Inventory
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {([5, 10, 20] as const).map((denom) => (
+              <div
+                key={denom}
+                className="rounded-lg bg-secondary p-3 text-center"
+              >
+                <p className="text-lg font-bold text-foreground">£{denom}</p>
+                <div className="mt-1 flex items-center justify-center gap-1.5">
+                  <NoteStatusDot count={notes[denom]} />
+                  <p className="text-sm text-muted-foreground">
+                    {notes[denom] === 0 ? "Empty" : `${notes[denom]} left`}
+                  </p>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground text-right">
+            Total cash available: £{calculateTotalCash(notes)}
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Note Inventory */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Banknote className="h-4 w-4" /> Note Inventory
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-3">
-              {([5, 10, 20] as const).map((denom) => (
-                <div key={denom} className="rounded-lg bg-secondary p-3 text-center">
-                  <p className="text-lg font-bold text-foreground">£{denom}</p>
-                  <div className="mt-1 flex items-center justify-center gap-1.5">
-                    <NoteStatusDot count={notes[denom]} />
-                    <p className="text-sm text-muted-foreground">
-                      {isEmpty ? "Empty" : `${notes[denom]} left`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground text-right">
-              Total cash available: £{calculateTotalCash(notes)}
+      {/* Transaction History */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4" /> Transaction History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No transactions yet.
             </p>
           ) : (
             <ul className="divide-y divide-border">

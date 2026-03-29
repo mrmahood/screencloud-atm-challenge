@@ -6,11 +6,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   NoteInventory,
   WithdrawalResult,
-  calculateTotalCash,
   getSuggestedWithdrawalAmounts,
 } from "@/lib/atm";
 import { Transaction } from "@/hooks/useAtm";
-import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
+import { AlertTriangle, History, LogOut, Wallet } from "lucide-react";
 
 interface Props {
   balance: number;
@@ -20,24 +19,6 @@ interface Props {
   onWithdraw: (amount: number) => WithdrawalResult;
   onSetError: (err: string | null) => void;
   onReset: () => void;
-}
-
-function NoteStatusDot({ count }: { count: number }) {
-  const color =
-    count === 0
-      ? "bg-destructive"
-      : count <= 3
-        ? "bg-warning"
-        : "bg-emerald-500";
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />;
-}
-
-function noteSummary(dispensed: NoteInventory): string {
-  const parts: string[] = [];
-  if (dispensed[20] > 0) parts.push(`${dispensed[20]}×£20`);
-  if (dispensed[10] > 0) parts.push(`${dispensed[10]}×£10`);
-  if (dispensed[5] > 0) parts.push(`${dispensed[5]}×£5`);
-  return parts.join(", ") || "—";
 }
 
 function formatTime(date: Date): string {
@@ -215,36 +196,6 @@ export default function AtmDashboard({
         </CardContent>
       </Card>
 
-      {/* Note Inventory */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Banknote className="h-4 w-4" /> Note Inventory
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3">
-            {([5, 10, 20] as const).map((denom) => (
-              <div
-                key={denom}
-                className="rounded-lg bg-secondary p-3 text-center"
-              >
-                <p className="text-lg font-bold text-foreground">£{denom}</p>
-                <div className="mt-1 flex items-center justify-center gap-1.5">
-                  <NoteStatusDot count={notes[denom]} />
-                  <p className="text-sm text-muted-foreground">
-                    {notes[denom] === 0 ? "Empty" : `${notes[denom]} left`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground text-right">
-            Total cash available: £{calculateTotalCash(notes)}
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Transaction History */}
       <Card>
         <CardHeader className="pb-3">
@@ -274,7 +225,6 @@ export default function AtmDashboard({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {noteSummary(tx.dispensedNotes)} ·{" "}
                       {formatTime(tx.timestamp)}
                     </p>
                   </div>

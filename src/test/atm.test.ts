@@ -85,7 +85,7 @@ describe("ATM withdrawal failure cases", () => {
       success: false,
       notesDispensed: { 5: 0, 10: 0, 20: 0 },
       updatedInventory: { 5: 1, 10: 1, 20: 2 },
-      message: "ATM has insufficient cash for this withdrawal.",
+      message: "This amount is unavailable from this ATM right now. Please try a different amount.",
     });
   });
 
@@ -96,7 +96,7 @@ describe("ATM withdrawal failure cases", () => {
       success: false,
       notesDispensed: { 5: 0, 10: 0, 20: 0 },
       updatedInventory: { 5: 0, 10: 2, 20: 2 },
-      message: "Cannot dispense exact amount with current note inventory.",
+      message: "Unable to dispense this exact amount. Please try a different amount.",
     });
   });
 

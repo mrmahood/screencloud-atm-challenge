@@ -8,56 +8,49 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 96%;
-    --foreground: 215 25% 15%;
+    --background: 220 16% 96%;
+    --foreground: 220 20% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 220 20% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 220 20% 14%;
 
-    --primary: 210 70% 40%;
+    --primary: 217 72% 44%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 92%;
-    --secondary-foreground: 215 25% 15%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 210 15% 92%;
-    --muted-foreground: 215 10% 50%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 170 60% 40%;
+    --accent: 170 55% 38%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 55%;
+    --destructive: 0 68% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 90% 50%;
-    --warning-foreground: 38 90% 15%;
+    --warning: 38 88% 50%;
+    --warning-foreground: 30 80% 16%;
 
-    --success: 150 60% 40%;
+    --success: 152 56% 38%;
     --success-foreground: 0 0% 100%;
 
-    --border: 210 15% 88%;
-    --input: 210 15% 88%;
-    --ring: 210 70% 40%;
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 217 72% 44%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -106,7 +99,18 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  .card-elevated {
+    @apply bg-card shadow-sm border border-border/60;
+  }
+
+  .card-hero {
+    @apply bg-card shadow-md border border-border/40;
   }
 }
 
@@ -114,4 +118,26 @@ All colors MUST be HSL.
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

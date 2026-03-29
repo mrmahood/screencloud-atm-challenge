@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,10 @@ import { Transaction } from "@/hooks/useAtm";
 import {
   AlertTriangle,
   ArrowDownRight,
+  Banknote,
   CheckCircle2,
   Clock,
+  Loader2,
   LogOut,
   Wallet,
 } from "lucide-react";
@@ -31,6 +33,8 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+type TxStage = "idle" | "processing" | "dispensing" | "collect";
+
 export default function AtmDashboard({
   balance,
   notes,
@@ -43,7 +47,9 @@ export default function AtmDashboard({
   const isOverdrawn = balance < 0;
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [stage, setStage] = useState<TxStage>("idle");
   const [lastSuccess, setLastSuccess] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const suggestedAmounts = useMemo(
     () => getSuggestedWithdrawalAmounts(notes, balance),
@@ -51,19 +57,44 @@ export default function AtmDashboard({
   );
 
   const showSuggestions = balance > 0 && suggestedAmounts.length > 0;
+  const isBusy = stage !== "idle";
 
-  const handleWithdraw = (amount: number) => {
-    const result = onWithdraw(amount);
-    if (!result.success) {
-      onSetError(result.message);
+  const runWithdraw = useCallback(
+    (amount: number) => {
+      if (isBusy) return;
+      clearTimeout(timerRef.current);
+      onSetError(null);
       setLastSuccess(null);
-      return;
-    }
-    onSetError(null);
-    setWithdrawalAmount("");
-    setLastSuccess(amount);
-    setTimeout(() => setLastSuccess(null), 4000);
-  };
+      setStage("processing");
+
+      // Stage 1: "Processing…" (600ms) → execute logic
+      timerRef.current = setTimeout(() => {
+        const result = onWithdraw(amount);
+
+        if (!result.success) {
+          onSetError(result.message);
+          setStage("idle");
+          return;
+        }
+
+        // Stage 2: "Dispensing cash…" (800ms)
+        setStage("dispensing");
+        setWithdrawalAmount("");
+
+        timerRef.current = setTimeout(() => {
+          // Stage 3: "Please take your cash" (2.5s)
+          setStage("collect");
+          setLastSuccess(amount);
+
+          timerRef.current = setTimeout(() => {
+            setStage("idle");
+            setLastSuccess(null);
+          }, 2500);
+        }, 800);
+      }, 600);
+    },
+    [isBusy, onWithdraw, onSetError],
+  );
 
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
@@ -71,8 +102,37 @@ export default function AtmDashboard({
       onSetError("Enter a valid withdrawal amount in multiples of £5.");
       return;
     }
-    handleWithdraw(amount);
+    runWithdraw(amount);
   };
+
+  /* Stage banner content */
+  const stageBanner = (() => {
+    switch (stage) {
+      case "processing":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-primary/6 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            Processing transaction…
+          </div>
+        );
+      case "dispensing":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-primary/6 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+            <Banknote className="h-4 w-4 shrink-0" />
+            Dispensing cash…
+          </div>
+        );
+      case "collect":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-success/8 border border-success/20 px-4 py-3 text-sm font-medium text-success animate-slide-down">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Please take your cash — £{lastSuccess} dispensed.
+          </div>
+        );
+      default:
+        return null;
+    }
+  })();
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-4 sm:p-6">
@@ -92,6 +152,7 @@ export default function AtmDashboard({
             size="sm"
             className="gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setConfirmingReset(true)}
+            disabled={isBusy}
           >
             <LogOut className="h-3.5 w-3.5" />
             End Session
@@ -149,16 +210,11 @@ export default function AtmDashboard({
         </CardContent>
       </Card>
 
-      {/* Success banner */}
-      {lastSuccess !== null && (
-        <div className="flex items-center gap-2.5 rounded-lg bg-success/8 border border-success/20 px-4 py-3 text-sm font-medium text-success animate-slide-down">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          £{lastSuccess} dispensed successfully.
-        </div>
-      )}
+      {/* Stage / status banners */}
+      {stageBanner}
 
       {/* Error banner */}
-      {error && (
+      {error && stage === "idle" && (
         <div className="flex items-center gap-2.5 rounded-lg bg-destructive/8 border border-destructive/20 px-4 py-3 text-sm font-medium text-destructive animate-slide-down">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
@@ -166,7 +222,7 @@ export default function AtmDashboard({
       )}
 
       {/* Withdraw */}
-      <Card className="card-elevated">
+      <Card className={`card-elevated transition-opacity duration-200 ${isBusy ? "opacity-60 pointer-events-none" : ""}`}>
         <CardHeader className="pb-3 px-5 pt-5">
           <CardTitle className="text-sm font-semibold text-foreground">
             Withdraw Cash
@@ -188,11 +244,13 @@ export default function AtmDashboard({
                 value={withdrawalAmount}
                 onChange={(e) => setWithdrawalAmount(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmitWithdraw()}
+                disabled={isBusy}
               />
             </div>
             <Button
               className="h-11 sm:w-36 font-semibold text-sm shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-150"
               onClick={handleSubmitWithdraw}
+              disabled={isBusy}
             >
               Withdraw
             </Button>
@@ -210,6 +268,7 @@ export default function AtmDashboard({
                     <button
                       key={amount}
                       onClick={() => setWithdrawalAmount(String(amount))}
+                      disabled={isBusy}
                       className={`inline-flex h-8 items-center rounded-md border px-3.5 text-sm font-medium tabular-nums transition-all duration-150 
                         ${
                           withdrawalAmount === String(amount)
@@ -253,9 +312,7 @@ export default function AtmDashboard({
                 <li
                   key={tx.id}
                   className="group flex items-center justify-between rounded-md px-2 py-2.5 -mx-2 transition-colors hover:bg-muted/40"
-                  style={{
-                    animationDelay: `${i * 50}ms`,
-                  }}
+                  style={{ animationDelay: `${i * 50}ms` }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/60">

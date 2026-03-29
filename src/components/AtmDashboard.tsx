@@ -66,9 +66,9 @@ export default function AtmDashboard({
     // Optionally filter out amounts above positive balance
     if (balance > 0) {
       const filtered = suggestions.filter((a) => a <= balance);
-      if (filtered.length >= 4) return filtered;
+      if (filtered.length >= 4) return filtered.sort((a, b) => a - b);
     }
-    return suggestions;
+    return suggestions.sort((a, b) => a - b);
   }, [notes, balance]);
 
   const handleWithdraw = (amount: number) => {
@@ -152,10 +152,9 @@ export default function AtmDashboard({
           {isOverdrawn && (
             <Alert className="mt-4 border-warning/50 bg-warning/10">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle className="text-warning">Account Overdrawn</AlertTitle>
-              <AlertDescription className="text-warning-foreground">
-                You have £{overdraftRemaining.toFixed(2)} remaining before your
-                overdraft limit.
+              <AlertTitle className="text-warning">Overdrawn</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                You are £{Math.abs(balance).toFixed(2)} overdrawn. £{overdraftRemaining.toFixed(2)} remaining before limit.
               </AlertDescription>
             </Alert>
           )}
@@ -179,22 +178,26 @@ export default function AtmDashboard({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              type="number"
-              min={5}
-              step={5}
-              inputMode="numeric"
-              placeholder="Enter amount (e.g. 50)"
-              value={withdrawalAmount}
-              onChange={(e) => setWithdrawalAmount(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmitWithdraw()}
-            />
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">£</span>
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                inputMode="numeric"
+                className="pl-7"
+                placeholder="Amount (multiples of £5)"
+                value={withdrawalAmount}
+                onChange={(e) => setWithdrawalAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmitWithdraw()}
+              />
+            </div>
             <Button className="sm:w-40" onClick={handleSubmitWithdraw}>
               Withdraw
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Amounts must be in multiples of £5
+          <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Withdrawals must be in multiples of £5
           </p>
 
           {suggestedAmounts.length > 0 && (
@@ -208,7 +211,10 @@ export default function AtmDashboard({
                     key={amount}
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleWithdraw(amount)}
+                    onClick={() => {
+                      setWithdrawalAmount(String(amount));
+                      onSetError(null);
+                    }}
                   >
                     £{amount}
                   </Button>

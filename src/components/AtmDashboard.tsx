@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { NoteInventory, Transaction, getTotalCash } from "@/hooks/useAtm";
+import { NoteInventory, WithdrawalResult, calculateTotalCash } from "@/lib/atm";
+import { Transaction } from "@/hooks/useAtm";
 import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
 
 interface Props {
@@ -8,7 +9,7 @@ interface Props {
   notes: NoteInventory;
   transactions: Transaction[];
   error: string | null;
-  onWithdraw: (amount: number) => { success: boolean; error?: string };
+  onWithdraw: (amount: number) => WithdrawalResult;
   onSetError: (err: string | null) => void;
   onReset: () => void;
 }
@@ -28,8 +29,8 @@ export default function AtmDashboard({
 
   const handleWithdraw = (amount: number) => {
     const result = onWithdraw(amount);
-    if (!result.success && result.error) {
-      onSetError(result.error);
+    if (!result.success) {
+      onSetError(result.message);
     }
   };
 
@@ -110,7 +111,7 @@ export default function AtmDashboard({
               ))}
             </div>
             <p className="mt-3 text-xs text-muted-foreground text-right">
-              Total cash available: £{getTotalCash(notes)}
+              Total cash available: £{calculateTotalCash(notes)}
             </p>
           </CardContent>
         </Card>

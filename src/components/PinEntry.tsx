@@ -43,11 +43,14 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
     setError(null);
 
     try {
-      const res = await fetch("https://pinapi.screencloudsolutions.com/api/pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
+      const res = await fetch(
+        "https://pinapi.screencloudsolutions.com/api/pin",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin }),
+        },
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -65,12 +68,15 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
     }
   };
 
+  const dots = Array.from({ length: 4 }, (_, i) => i);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm shadow-lg">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <Lock className="h-7 w-7 text-primary" />
+      <div className="w-full max-w-sm animate-fade-in-up">
+        {/* Branding */}
+        <div className="text-center mb-8">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 shadow-sm">
+            <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">ATM Login</CardTitle>
           <p className="text-sm text-muted-foreground">Enter your 4-digit PIN to continue</p>

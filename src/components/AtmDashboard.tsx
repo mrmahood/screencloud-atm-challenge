@@ -63,46 +63,156 @@ export default function AtmDashboard({
     handleWithdraw(amount);
   };
 
+  /* Stage banner content */
+  const stageBanner = (() => {
+    switch (stage) {
+      case "processing":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-primary/6 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            Processing transaction…
+          </div>
+        );
+      case "dispensing":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-primary/6 border border-primary/15 px-4 py-3 text-sm font-medium text-primary animate-slide-down">
+            <Banknote className="h-4 w-4 shrink-0" />
+            Dispensing cash…
+          </div>
+        );
+      case "collect":
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg bg-success/8 border border-success/20 px-4 py-3 text-sm font-medium text-success animate-slide-down">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Please take your cash — £{lastSuccess} dispensed.
+          </div>
+        );
+      default:
+        return null;
+    }
+  })();
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="mx-auto max-w-2xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">ATM</h1>
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-muted-foreground">
-            <LogOut className="mr-1 h-4 w-4" /> End Session
-          </Button>
+    <div className="mx-auto max-w-md space-y-4 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-1">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            ATM
+          </h1>
         </div>
-
-        {/* Balance */}
-        <Card className={isOverdrawn ? "border-warning" : ""}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isOverdrawn ? "bg-warning/15" : "bg-primary/10"}`}>
-                <Wallet className={`h-5 w-5 ${isOverdrawn ? "text-warning" : "text-primary"}`} />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className={`text-3xl font-bold tabular-nums ${isOverdrawn ? "text-warning" : "text-foreground"}`}>
-                  £{balance.toFixed(2)}
-                </p>
-              </div>
-            </div>
-            {isOverdrawn && (
-              <div className="mt-3 flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                You are overdrawn. Overdraft limit: £100
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Error */}
-        {error && (
-          <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-            {error}
+        {!confirmingReset ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setConfirmingReset(true)}
+            disabled={isBusy}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            End Session
+          </Button>
+        ) : (
+          <div className="flex items-center gap-1.5 animate-fade-in-up">
+            <span className="text-xs text-muted-foreground mr-1">
+              End session?
+            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-xs px-2.5"
+              onClick={onReset}
+            >
+              Confirm
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setConfirmingReset(false)}
+            >
+              Cancel
+            </Button>
           </div>
         )}
+      </div>
+
+      {/* Balance — Hero */}
+      <Card
+        className={`card-hero transition-all duration-300 ${
+          isOverdrawn
+            ? "border-warning/50 shadow-[0_2px_12px_-4px_hsl(var(--warning)/0.15)]"
+            : "shadow-[0_2px_16px_-6px_hsl(var(--primary)/0.1)]"
+        }`}
+      >
+        <CardContent className="pt-6 pb-5 px-6">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            Available Balance
+          </p>
+          <p
+            className={`text-4xl font-bold tabular-nums tracking-tight transition-colors duration-300 ${
+              isOverdrawn ? "text-warning" : "text-foreground"
+            }`}
+          >
+            £{balance.toFixed(2)}
+          </p>
+          {isOverdrawn && (
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-warning animate-fade-in-up">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              You are £{Math.abs(balance).toFixed(2)} overdrawn.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Stage / status banners */}
+      {stageBanner}
+
+      {/* Error banner */}
+      {error && stage === "idle" && (
+        <div className="flex items-center gap-2.5 rounded-lg bg-destructive/8 border border-destructive/20 px-4 py-3 text-sm font-medium text-destructive animate-slide-down">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Withdraw */}
+      <Card className={`card-elevated transition-opacity duration-200 ${isBusy ? "opacity-60 pointer-events-none" : ""}`}>
+        <CardHeader className="pb-3 px-5 pt-5">
+          <CardTitle className="text-sm font-semibold text-foreground">
+            Withdraw Cash
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 px-5 pb-5">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground/70">
+                £
+              </span>
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                inputMode="numeric"
+                className="h-11 pl-7 text-base tabular-nums bg-background/50 border-border/80 focus:border-primary/40 transition-colors"
+                placeholder="Amount"
+                value={withdrawalAmount}
+                onChange={(e) => setWithdrawalAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmitWithdraw()}
+                disabled={isBusy}
+              />
+            </div>
+            <Button
+              className="h-11 sm:w-36 font-semibold text-sm shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-150"
+              onClick={handleSubmitWithdraw}
+              disabled={isBusy}
+            >
+              Withdraw
+            </Button>
+          </div>
 
         {/* Withdraw */}
         <Card>

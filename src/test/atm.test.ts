@@ -295,7 +295,7 @@ describe("Michael withdrawal permutations (140, 50, 90)", () => {
 
   it.each(permutations)(
     "processes permutation %j with inventory/balance updates, overdraft checks, result shape consistency, and dynamic suggestions",
-    (permutation) => {
+    (permutation: number[]) => {
       let balance = 170;
       let inventory: NoteInventory = { ...INITIAL_NOTE_INVENTORY };
       let remainingOverdraftFailures = 0;

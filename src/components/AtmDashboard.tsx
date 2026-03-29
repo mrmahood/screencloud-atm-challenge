@@ -5,11 +5,10 @@ import { Input } from "@/components/ui/input";
 import {
   NoteInventory,
   WithdrawalResult,
-  calculateTotalCash,
   getSuggestedWithdrawalAmounts,
 } from "@/lib/atm";
 import { Transaction } from "@/hooks/useAtm";
-import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
+import { AlertTriangle, History, LogOut, Wallet } from "lucide-react";
 
 interface Props {
   balance: number;
@@ -19,6 +18,10 @@ interface Props {
   onWithdraw: (amount: number) => WithdrawalResult;
   onSetError: (err: string | null) => void;
   onReset: () => void;
+}
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function AtmDashboard({
@@ -32,75 +35,33 @@ export default function AtmDashboard({
 }: Props) {
   const isOverdrawn = balance < 0;
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
-  const suggestedAmounts = useMemo(() => getSuggestedWithdrawalAmounts(notes, balance), [notes, balance]);
+  const suggestedAmounts = useMemo(
+    () => getSuggestedWithdrawalAmounts(notes, balance),
+    [notes, balance],
+  );
+
+  const showSuggestions = balance > 0 && suggestedAmounts.length > 0;
 
   const handleWithdraw = (amount: number) => {
     const result = onWithdraw(amount);
-
     if (!result.success) {
       onSetError(result.message);
       return;
     }
-
     onSetError(null);
     setWithdrawalAmount("");
   };
 
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
-      return;
-    }
-
-    handleWithdraw(amount);
-  };
-
-  const handleSubmitWithdraw = () => {
-    const amount = Number(withdrawalAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
-      return;
-    }
-
-    handleWithdraw(amount);
-  };
-
-  const handleSubmitWithdraw = () => {
-    const amount = Number(withdrawalAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
-      return;
-    }
-
-    handleWithdraw(amount);
-  };
-
-  const handleSubmitWithdraw = () => {
-    const amount = Number(withdrawalAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
-      onSetError("Enter a valid withdrawal amount in multiples of £5.");
-      return;
-    }
-
-    handleWithdraw(amount);
-  };
-
-  const handleSubmitWithdraw = () => {
-    const amount = Number(withdrawalAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
       onSetError("Enter a valid withdrawal amount in multiples of £5.");
       return;
     }
     handleWithdraw(amount);
   };
-
-  const showSuggestions = balance > 0 && suggestedAmounts.length > 0;
 
   return (
     <div className="mx-auto max-w-lg space-y-5 p-4 sm:p-6">
@@ -134,46 +95,26 @@ export default function AtmDashboard({
         )}
       </div>
 
-        {/* Withdraw */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Withdraw Cash</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Input
-                type="number"
-                min={5}
-                step={5}
-                inputMode="numeric"
-                placeholder="Enter amount (e.g. 50)"
-                value={withdrawalAmount}
-                onChange={(event) => setWithdrawalAmount(event.target.value)}
-              />
-              <Button className="sm:w-40" onClick={handleSubmitWithdraw}>
-                Withdraw
-              </Button>
-            </div>
-
-            {suggestedAmounts.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
-                <div className="flex flex-wrap gap-2">
-                  {suggestedAmounts.map((amount) => (
-                    <Button
-                      key={amount}
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleWithdraw(amount)}
-                    >
-                      £{amount}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Balance */}
+      <Card className={isOverdrawn ? "border-warning" : ""}>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Wallet className="h-4 w-4" /> Account Balance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p
+            className={`text-3xl font-bold tabular-nums ${isOverdrawn ? "text-warning" : "text-foreground"}`}
+          >
+            £{balance.toFixed(2)}
+          </p>
+          {isOverdrawn && (
+            <p className="mt-2 text-sm text-warning">
+              You are £{Math.abs(balance).toFixed(2)} overdrawn.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Error */}
       {error && (
@@ -208,16 +149,39 @@ export default function AtmDashboard({
                 onKeyDown={(e) => e.key === "Enter" && handleSubmitWithdraw()}
               />
             </div>
-            <p className="mt-3 text-xs text-muted-foreground text-right">
-              Total cash available: £{calculateTotalCash(notes)}
-            </p>
-          </CardContent>
-        </Card>
+            <Button className="sm:w-40" onClick={handleSubmitWithdraw}>
+              Withdraw
+            </Button>
+          </div>
+
+          {showSuggestions && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Suggested amounts
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedAmounts
+                  .sort((a, b) => a - b)
+                  .map((amount) => (
+                    <Button
+                      key={amount}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setWithdrawalAmount(String(amount))}
+                    >
+                      £{amount}
+                    </Button>
+                  ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Transaction History */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <History className="h-4 w-4" /> Transaction History
           </CardTitle>
         </CardHeader>

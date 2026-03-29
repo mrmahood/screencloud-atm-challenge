@@ -47,7 +47,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
           ? "Unable to connect. Please try again."
           : err.message || "Something went wrong";
       setError(message);
-      triggerShake();
+      // shake handled by error state
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               placeholder="••••"
               value={pin}
               onInput={(e) => {
-                updatePin(e.currentTarget.value, e.currentTarget);
+                updatePin(e.currentTarget.value);
               }}
               onChange={(e) => {
                 updatePin(e.currentTarget.value);

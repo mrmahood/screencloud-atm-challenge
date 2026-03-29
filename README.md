@@ -94,3 +94,4 @@ AI tools were used to accelerate development, while maintaining control over pro
 ```bash
 npm install
 npm run dev
+<img width="1957" height="15100" alt="ScreenCloud ATM Canvas" src="https://github.com/user-attachments/assets/834c1270-573c-4356-8a93-9334d4abfdc5" />

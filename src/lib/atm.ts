@@ -158,11 +158,16 @@ const PREFERRED_SUGGESTED_AMOUNTS = [
   5, 15, 25, 35, 45, 55, 65, 75, 85, 95,
 ] as const;
 
-export function getSuggestedWithdrawalAmounts(inventory: NoteInventory): number[] {
+export function getSuggestedWithdrawalAmounts(inventory: NoteInventory, balance: number): number[] {
+  if (balance <= 0) {
+    return [];
+  }
+
+  const maxSuggestedAmount = Math.min(100, balance);
   const suggestions: number[] = [];
 
   for (const amount of PREFERRED_SUGGESTED_AMOUNTS) {
-    if (amount > 100 || amount % 5 !== 0) {
+    if (amount > maxSuggestedAmount || amount % 5 !== 0) {
       continue;
     }
 
@@ -180,7 +185,7 @@ export function getSuggestedWithdrawalAmounts(inventory: NoteInventory): number[
     return suggestions;
   }
 
-  for (let amount = 5; amount <= 100; amount += 5) {
+  for (let amount = 5; amount <= maxSuggestedAmount; amount += 5) {
     if (suggestions.includes(amount)) {
       continue;
     }

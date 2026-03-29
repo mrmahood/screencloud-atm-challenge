@@ -15,7 +15,7 @@ export interface Transaction {
   dispensedNotes: NoteInventory;
 }
 
-export const OVERDRAFT_LIMIT = -100;
+const OVERDRAFT_LIMIT = -100;
 
 function createHookFailureResult(message: string, notes: NoteInventory): WithdrawalResult {
   return {

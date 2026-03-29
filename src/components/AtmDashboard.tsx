@@ -1,6 +1,14 @@
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { NoteInventory, Transaction, getTotalCash } from "@/hooks/useAtm";
+import { Input } from "@/components/ui/input";
+import {
+  NoteInventory,
+  WithdrawalResult,
+  calculateTotalCash,
+  getSuggestedWithdrawalAmounts,
+} from "@/lib/atm";
+import { Transaction } from "@/hooks/useAtm";
 import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
 
 interface Props {
@@ -8,12 +16,10 @@ interface Props {
   notes: NoteInventory;
   transactions: Transaction[];
   error: string | null;
-  onWithdraw: (amount: number) => { success: boolean; error?: string };
+  onWithdraw: (amount: number) => WithdrawalResult;
   onSetError: (err: string | null) => void;
   onReset: () => void;
 }
-
-const WITHDRAWAL_OPTIONS = [50, 90, 140];
 
 export default function AtmDashboard({
   balance,
@@ -25,12 +31,36 @@ export default function AtmDashboard({
   onReset,
 }: Props) {
   const isOverdrawn = balance < 0;
+  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+  const parsedWithdrawalAmount = Number(withdrawalAmount);
+  const canSubmitWithdrawal =
+    Number.isFinite(parsedWithdrawalAmount) &&
+    parsedWithdrawalAmount > 0 &&
+    parsedWithdrawalAmount % 5 === 0;
+
+  const suggestedAmounts = useMemo(() => getSuggestedWithdrawalAmounts(notes, balance), [notes, balance]);
 
   const handleWithdraw = (amount: number) => {
     const result = onWithdraw(amount);
-    if (!result.success && result.error) {
-      onSetError(result.error);
+
+    if (!result.success) {
+      onSetError(result.message);
+      return;
     }
+
+    onSetError(null);
+    setWithdrawalAmount("");
+  };
+
+  const handleSubmitWithdraw = () => {
+    const amount = Number(withdrawalAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
+      onSetError("Enter a valid withdrawal amount in multiples of £5.");
+      return;
+    }
+
+    handleWithdraw(amount);
   };
 
   return (
@@ -77,19 +107,52 @@ export default function AtmDashboard({
         {/* Withdraw */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Quick Withdraw</CardTitle>
+            <CardTitle className="text-base font-semibold">Withdraw Cash</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            {WITHDRAWAL_OPTIONS.map((amt) => (
-              <Button
-                key={amt}
-                variant="outline"
-                className="flex-1 min-w-[100px] h-12 text-lg font-semibold"
-                onClick={() => handleWithdraw(amt)}
-              >
-                £{amt}
+          <CardContent className="space-y-4">
+            <form
+              className="flex flex-col gap-3 sm:flex-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSubmitWithdraw();
+              }}
+            >
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                inputMode="numeric"
+                placeholder="Enter amount (e.g. 50)"
+                value={withdrawalAmount}
+                onChange={(event) => {
+                  setWithdrawalAmount(event.target.value);
+                  if (error) {
+                    onSetError(null);
+                  }
+                }}
+              />
+              <Button type="submit" className="sm:w-40" disabled={!canSubmitWithdrawal}>
+                Withdraw
               </Button>
-            ))}
+            </form>
+
+            {suggestedAmounts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedAmounts.map((amount) => (
+                    <Button
+                      key={amount}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleWithdraw(amount)}
+                    >
+                      £{amount}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -110,7 +173,7 @@ export default function AtmDashboard({
               ))}
             </div>
             <p className="mt-3 text-xs text-muted-foreground text-right">
-              Total cash available: £{getTotalCash(notes)}
+              Total cash available: £{calculateTotalCash(notes)}
             </p>
           </CardContent>
         </Card>
@@ -131,11 +194,9 @@ export default function AtmDashboard({
                   <li key={tx.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
                     <div>
                       <span className="font-medium text-foreground">-£{tx.amount}</span>
-                      <span className="ml-2 text-muted-foreground">
-                        {tx.timestamp.toLocaleTimeString()}
-                      </span>
+                      <span className="ml-2 text-muted-foreground">{tx.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
-                    <span className={`font-medium tabular-nums ${tx.balanceAfter < 0 ? "text-warning" : "text-foreground"}`}>
+                    <span className={`font-medium tabular-nums ${tx.balanceAfter < 0 ? "text-warning" : "text-foreground"}`} title="Balance after withdrawal">
                       £{tx.balanceAfter.toFixed(2)}
                     </span>
                   </li>

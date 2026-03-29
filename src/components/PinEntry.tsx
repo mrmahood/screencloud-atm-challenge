@@ -13,6 +13,14 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sanitizePin = (value: string) => value.replace(/\D/g, "").slice(0, 4);
+  const updatePin = (rawValue: string, inputElement?: HTMLInputElement) => {
+    const sanitizedPin = sanitizePin(rawValue);
+    if (inputElement && inputElement.value !== sanitizedPin) {
+      inputElement.value = sanitizedPin;
+    }
+    setPin(sanitizedPin);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +77,16 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               pattern="[0-9]*"
               placeholder="••••"
               value={pin}
+              onInput={(e) => {
+                updatePin(e.currentTarget.value, e.currentTarget);
+              }}
               onChange={(e) => {
-                setPin(sanitizePin(e.target.value));
-                setError(null);
+                updatePin(e.currentTarget.value, e.currentTarget);
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pastedValue = e.clipboardData.getData("text");
+                updatePin(pastedValue, e.currentTarget);
               }}
               onBeforeInput={(e) => {
                 const nativeEvent = e.nativeEvent as InputEvent;

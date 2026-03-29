@@ -82,6 +82,17 @@ export default function AtmDashboard({
 
   const handleSubmitWithdraw = () => {
     const amount = Number(withdrawalAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
+      onSetError("Enter a valid withdrawal amount in multiples of £5.");
+      return;
+    }
+
+    handleWithdraw(amount);
+  };
+
+  const handleSubmitWithdraw = () => {
+    const amount = Number(withdrawalAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
       onSetError("Enter a valid withdrawal amount in multiples of £5.");
       return;

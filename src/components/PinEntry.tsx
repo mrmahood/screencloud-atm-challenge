@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Loader2, Lock } from "lucide-react";
 
@@ -13,12 +12,8 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sanitizePin = (value: string) => value.replace(/\D/g, "").slice(0, 4);
-  const updatePin = (rawValue: string, inputElement?: HTMLInputElement) => {
-    const sanitizedPin = sanitizePin(rawValue);
-    if (inputElement && inputElement.value !== sanitizedPin) {
-      inputElement.value = sanitizedPin;
-    }
-    setPin(sanitizedPin);
+  const updatePin = (rawValue: string) => {
+    setPin(sanitizePin(rawValue));
     setError(null);
   };
 
@@ -70,7 +65,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
+            <input
               type="password"
               inputMode="numeric"
               maxLength={4}
@@ -81,33 +76,14 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                 updatePin(e.currentTarget.value, e.currentTarget);
               }}
               onChange={(e) => {
-                updatePin(e.currentTarget.value, e.currentTarget);
+                updatePin(e.currentTarget.value);
               }}
               onPaste={(e) => {
                 e.preventDefault();
                 const pastedValue = e.clipboardData.getData("text");
-                updatePin(pastedValue, e.currentTarget);
+                updatePin(pastedValue);
               }}
-              onBeforeInput={(e) => {
-                const nativeEvent = e.nativeEvent as InputEvent;
-                const isInsertAction = nativeEvent.inputType?.startsWith("insert");
-                const nextChar = nativeEvent.data ?? "";
-
-                if (!isInsertAction) {
-                  return;
-                }
-
-                if (/\D/.test(nextChar) || pin.length >= 4) {
-                  e.preventDefault();
-                }
-              }}
-              onPaste={(e) => {
-                e.preventDefault();
-                const pastedValue = e.clipboardData.getData("text");
-                setPin(sanitizePin(pastedValue));
-                setError(null);
-              }}
-              className={`text-center text-2xl tracking-[0.5em] h-14 ${shake ? "animate-shake" : ""}`}
+              className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-center text-2xl tracking-[0.5em] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               autoFocus
             />
             {error && (

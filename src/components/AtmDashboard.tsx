@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { NoteInventory, WithdrawalResult, calculateTotalCash } from "@/lib/atm";
+import { Input } from "@/components/ui/input";
+import {
+  NoteInventory,
+  WithdrawalResult,
+  calculateTotalCash,
+  getSuggestedWithdrawalAmounts,
+} from "@/lib/atm";
 import { Transaction } from "@/hooks/useAtm";
 import { AlertTriangle, Banknote, History, LogOut, Wallet } from "lucide-react";
 
@@ -15,30 +21,6 @@ interface Props {
   onReset: () => void;
 }
 
-const WITHDRAWAL_OPTIONS = [50, 90, 140];
-
-function NoteStatusDot({ count }: { count: number }) {
-  const color =
-    count === 0
-      ? "bg-destructive"
-      : count <= 5
-        ? "bg-warning"
-        : "bg-success";
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />;
-}
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-function noteSummary(dispensed: NoteInventory) {
-  const parts: string[] = [];
-  for (const denom of [20, 10, 5] as const) {
-    if (dispensed[denom] > 0) parts.push(`${dispensed[denom]}×£${denom}`);
-  }
-  return parts.join(", ");
-}
-
 export default function AtmDashboard({
   balance,
   notes,
@@ -50,45 +32,105 @@ export default function AtmDashboard({
   onReset,
 }: Props) {
   const isOverdrawn = balance < 0;
-  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+
+  const suggestedAmounts = useMemo(() => getSuggestedWithdrawalAmounts(notes), [notes]);
 
   const handleWithdraw = (amount: number) => {
     const result = onWithdraw(amount);
+
     if (!result.success) {
       onSetError(result.message);
+      return;
     }
+
+    onSetError(null);
+    setWithdrawalAmount("");
+  };
+
+  const handleSubmitWithdraw = () => {
+    const amount = Number(withdrawalAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0 || amount % 5 !== 0) {
+      onSetError("Enter a valid withdrawal amount in multiples of £5.");
+      return;
+    }
+
+    handleWithdraw(amount);
   };
 
   const overdraftRemaining = Math.abs(OVERDRAFT_LIMIT) + balance;
 
-  return (
-    <TooltipProvider>
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="mx-auto max-w-2xl space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">ATM</h1>
-            {!confirmingReset ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmingReset(true)}
-                className="text-muted-foreground"
-              >
-                <LogOut className="mr-1 h-4 w-4" /> End Session
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Are you sure?</span>
-                <Button variant="destructive" size="sm" onClick={onReset}>
-                  Confirm
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setConfirmingReset(false)}>
-                  Cancel
-                </Button>
+        {/* Balance */}
+        <Card className={isOverdrawn ? "border-warning" : ""}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isOverdrawn ? "bg-warning/15" : "bg-primary/10"}`}>
+                <Wallet className={`h-5 w-5 ${isOverdrawn ? "text-warning" : "text-primary"}`} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Current Balance</p>
+                <p className={`text-3xl font-bold tabular-nums ${isOverdrawn ? "text-warning" : "text-foreground"}`}>
+                  £{balance.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            {isOverdrawn && (
+              <div className="mt-3 flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                You are overdrawn. Overdraft limit: £100
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Error */}
+        {error && (
+          <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            {error}
           </div>
+        )}
+
+        {/* Withdraw */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Withdraw Cash</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                inputMode="numeric"
+                placeholder="Enter amount (e.g. 50)"
+                value={withdrawalAmount}
+                onChange={(event) => setWithdrawalAmount(event.target.value)}
+              />
+              <Button className="sm:w-40" onClick={handleSubmitWithdraw}>
+                Withdraw
+              </Button>
+            </div>
+
+            {suggestedAmounts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Suggested amounts</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedAmounts.map((amount) => (
+                    <Button
+                      key={amount}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleWithdraw(amount)}
+                    >
+                      £{amount}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
           {/* Balance */}
           <Card className={isOverdrawn ? "border-warning" : ""}>

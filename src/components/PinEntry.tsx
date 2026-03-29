@@ -112,7 +112,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
 
               {/* Dot indicators */}
               <div
-                className={`flex justify-center gap-4 cursor-text ${shake ? "animate-shake" : ""}`}
+                className={`flex justify-center gap-5 cursor-text ${shake ? "animate-shake" : ""}`}
                 onClick={focusInput}
                 role="presentation"
               >
@@ -125,12 +125,12 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                     <div
                       key={i}
                       className={[
-                        "relative flex h-14 w-14 items-center justify-center rounded-xl border-2 transition-all duration-200",
+                        "relative flex h-14 w-14 items-center justify-center rounded-xl border-2 transition-all duration-200 ease-out",
                         isFilled
-                          ? "border-primary bg-primary/5"
+                          ? "border-primary bg-primary/6 shadow-[0_0_0_3px_hsl(var(--primary)/0.06)]"
                           : isActive
-                            ? "border-primary/60 bg-primary/[0.03] shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
-                            : "border-border/60 bg-muted/30",
+                            ? "border-primary bg-primary/[0.04] shadow-[0_0_0_4px_hsl(var(--primary)/0.10)] scale-[1.04]"
+                            : "border-border/40 bg-muted/20",
                         isCompleted && isFilled
                           ? "border-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
                           : "",
@@ -141,10 +141,9 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                           "rounded-full transition-all duration-200",
                           isFilled
                             ? "h-3 w-3 bg-primary"
-                            : "h-2 w-2 bg-border/50",
-                          isActive && !isFilled
-                            ? "animate-pulse"
-                            : "",
+                            : isActive
+                              ? "h-2.5 w-2.5 bg-primary/40 animate-pulse"
+                              : "h-2 w-2 bg-border/30",
                         ].join(" ")}
                       />
                     </div>

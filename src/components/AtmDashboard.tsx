@@ -53,6 +53,8 @@ export default function AtmDashboard({
   const [successVisible, setSuccessVisible] = useState(false);
   const [successFading, setSuccessFading] = useState(false);
   const fadeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const successRef = useRef<HTMLDivElement>(null);
+  const [bannerHeight, setBannerHeight] = useState<number>(0);
 
   useEffect(() => {
     if (stage === "collect") {
@@ -61,14 +63,24 @@ export default function AtmDashboard({
     }
   }, [stage]);
 
+  // Measure banner height once it's rendered in "collect" stage
+  useEffect(() => {
+    if (successVisible && !successFading && successRef.current) {
+      setBannerHeight(successRef.current.scrollHeight);
+    }
+  }, [successVisible, successFading]);
+
   useEffect(() => {
     if (successVisible && stage === "idle") {
-      // stage just returned to idle — start fade-out
-      setSuccessFading(true);
+      // small delay so the browser paints the full-height state first
+      requestAnimationFrame(() => {
+        setSuccessFading(true);
+      });
       fadeTimer.current = setTimeout(() => {
         setSuccessVisible(false);
         setSuccessFading(false);
-      }, 500);
+        setBannerHeight(0);
+      }, 400);
     }
     return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
   }, [stage, successVisible]);
@@ -237,19 +249,24 @@ export default function AtmDashboard({
       {/* Stage / status banners */}
       {stageBanner}
 
-      {/* Lingering success banner — stays mounted during fade-out */}
+      {/* Lingering success banner — height + opacity collapse together */}
       {successVisible && stage === "idle" && (
         <div
-          className={[
-            "flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground",
-            "transition-all duration-500 ease-out",
-            successFading
-              ? "opacity-0 -translate-y-1"
-              : "opacity-100 translate-y-0",
-          ].join(" ")}
+          className="overflow-hidden transition-all duration-[350ms] ease-in-out"
+          style={{
+            maxHeight: successFading ? 0 : bannerHeight + 16,
+            opacity: successFading ? 0 : 1,
+            marginTop: successFading ? 0 : undefined,
+            marginBottom: successFading ? 0 : undefined,
+          }}
         >
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-          Please take your cash — £{lastSuccess} dispensed.
+          <div
+            ref={successRef}
+            className="flex items-center gap-3 rounded-xl bg-accent/60 border border-accent px-5 py-3.5 text-sm font-medium text-foreground"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+            Please take your cash — £{lastSuccess} dispensed.
+          </div>
         </div>
       )}
 

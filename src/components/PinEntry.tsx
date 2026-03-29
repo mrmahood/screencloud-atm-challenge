@@ -12,12 +12,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [shake, setShake] = useState(false);
-
-  const triggerShake = () => {
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
-  };
+  const sanitizePin = (value: string) => value.replace(/\D/g, "").slice(0, 4);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,15 +70,26 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               placeholder="••••"
               value={pin}
               onChange={(e) => {
-                const numericPin = e.target.value.replace(/\D/g, "").slice(0, 4);
-                setPin(numericPin);
+                setPin(sanitizePin(e.target.value));
                 setError(null);
+              }}
+              onBeforeInput={(e) => {
+                const nativeEvent = e.nativeEvent as InputEvent;
+                const isInsertAction = nativeEvent.inputType?.startsWith("insert");
+                const nextChar = nativeEvent.data ?? "";
+
+                if (!isInsertAction) {
+                  return;
+                }
+
+                if (/\D/.test(nextChar) || pin.length >= 4) {
+                  e.preventDefault();
+                }
               }}
               onPaste={(e) => {
                 e.preventDefault();
                 const pastedValue = e.clipboardData.getData("text");
-                const numericPin = pastedValue.replace(/\D/g, "").slice(0, 4);
-                setPin(numericPin);
+                setPin(sanitizePin(pastedValue));
                 setError(null);
               }}
               className={`text-center text-2xl tracking-[0.5em] h-14 ${shake ? "animate-shake" : ""}`}

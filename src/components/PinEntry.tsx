@@ -161,7 +161,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
               {/* Submit */}
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-semibold transition-all duration-200"
+                className="w-full h-12 text-sm font-semibold tracking-wide transition-all duration-150 active:scale-[0.98]"
                 disabled={loading || pin.length !== 4}
               >
                 {loading ? (
@@ -170,7 +170,7 @@ export default function PinEntry({ onSuccess }: PinEntryProps) {
                     Verifying…
                   </span>
                 ) : (
-                  "Enter"
+                  "Continue"
                 )}
               </Button>
             </form>
